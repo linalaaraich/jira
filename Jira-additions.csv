@@ -50,22 +50,29 @@ Estimate: 0.5 day
 Epic: K8s Migration
 Blocks: E3-03, E3-04, E3-05, E3-06, E3-07, E3-08, E3-09, E3-10
 Blocked by: E3-00, SCRUM-63 (rescoped Terraform)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,,SCRUM Sprint 2,,,3,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10149,SCRUM-86,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 12:00 PM
-E3-02: Container image pipeline — ECR + GitHub Actions for triage and 5 MCP servers,SCRUM-89,10152,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,,23/Apr/26 12:00 AM,0,Kubernetes,CI/CD,,,"As a platform engineer, I need an image registry the cluster can pull from and a CI pipeline that builds and pushes images on commit so that Helm-deployed pods can run our first-party code.
+"E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",SCRUM-89,10152,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,,23/Apr/26 12:00 AM,0,Kubernetes,Ansible,Images,,"As a platform engineer, I need first-party container images (triage service + 5 MCP servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can run them without a registry.
+
+Why no registry/CI: this is a single-node k3s cluster with one or two contributors. ECR + GitHub Actions adds operational surface area we don't need at this scale. k3s's containerd lets us import images directly from a tarball, which is enough.
 
 Acceptance Criteria:
-- ECR repositories created via Terraform: cires/triage-service, cires/mcp-prometheus, cires/mcp-loki, cires/mcp-jaeger, cires/mcp-drain3, cires/mcp-rca-history
-- GitHub Actions workflow .github/workflows/build-images.yml builds and pushes on push to main and on tags
-- Images tagged with both git short-SHA and semver tag
-- Pull authentication from k3s to ECR via IRSA, OR via imagePullSecret created from ECR auth token (with refresh CronJob)
-- Dockerfiles for triage service and 5 MCP servers extracted from current docker-compose builds
-- Verification: docker pull <ecr-url>/cires/triage-service:<sha> works from a fresh machine
-- All image references in Helm charts use pinned tags, never :latest
+- Dockerfiles for triage service and 5 MCP servers exist (extracted from current docker-compose builds)
+- New Ansible role/tasks that, for each image:
+  1. docker build -t cires/<name>:<tag> <context>
+  2. docker save cires/<name>:<tag> -o /tmp/<name>.tar
+  3. ssh to k3s host (or run locally if same host) and: sudo k3s ctr images import /tmp/<name>.tar
+- Image tag pinned via a single image_tag variable in group_vars (e.g. '1.0.0' or git short-sha)
+- All Helm charts reference cires/<name>:<image_tag> with imagePullPolicy: IfNotPresent
+- Verification: sudo k3s crictl images on the host shows all 6 cires/* images present
+- Verification: helm install of the AI stack chart succeeds without ImagePullBackOff
+- Documentation: README explains the build+import flow and the upgrade path to ECR+CI when multi-node is needed
 
-Story Points: 5
-Estimate: 1 day
+Defensible scope decision: registry+CI is the right answer at multi-node scale or with many contributors. We can swap to ECR with a one-line Helm values change when that's needed. Sprint 2 doesn't need it.
+
+Story Points: 3
+Estimate: 0.5 day
 Epic: K8s Migration
-Blocks: E3-05 (AI stack chart cannot deploy without images in registry)
-Blocked by: E3-00",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,,SCRUM Sprint 2,,,5,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10149,SCRUM-86,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 12:00 PM
+Blocks: E3-05 (AI stack chart can't run without images loaded)
+Blocked by: E3-00, E3-01",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,,SCRUM Sprint 2,,,3,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10149,SCRUM-86,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 12:00 PM
 E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes),SCRUM-90,10153,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,09/Apr/26 12:00 PM,,23/Apr/26 12:00 AM,0,Kubernetes,Helm,,,"As a developer, I need a Helm chart that deploys the Spring Boot backend into the k3s cluster so that the application is reachable from Kong and can talk to RDS.
 
 Acceptance Criteria:

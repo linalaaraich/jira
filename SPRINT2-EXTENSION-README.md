@@ -47,12 +47,12 @@ These tickets are still in Sprint 2 and **stay open**, but their scope changes d
 **Current status:** In Review
 
 **Change Summary to:**
-> E1-02: Terraform — VPC, 1 k3s EC2, RDS, S3+CloudFront, ECR repos
+> E1-02: Terraform — VPC, 1 k3s EC2, RDS, S3+CloudFront
 
 **Replace Description with:**
 ```
 As a platform engineer, I provision the AWS infrastructure for the K8s-hosted target so
-that the cluster, database, frontend hosting, and image registry are all version-controlled.
+that the cluster, database, and frontend hosting are all version-controlled.
 
 Acceptance Criteria:
 - VPC with public + private subnets, one AZ minimum
@@ -65,17 +65,17 @@ Acceptance Criteria:
 - AMI ID pinned (no most_recent = true)
 - RDS instance unchanged from prior scope
 - S3 bucket + CloudFront distribution unchanged
-- ECR repositories: cires/triage-service, cires/mcp-prometheus, cires/mcp-loki, cires/mcp-jaeger,
-  cires/mcp-drain3, cires/mcp-rca-history (used by SCRUM-89/E3-02)
 - Terraform providers pinned in providers.tf
 - terraform.lock.hcl committed
-- Outputs: k3s_host_ip, rds_endpoint, cloudfront_domain, ecr_registry_url
+- Outputs: k3s_host_ip, rds_endpoint, cloudfront_domain
 
 Story Points: 5 (was lower; bump for the rework)
 Estimate: 1 day
 Epic: AWS Infrastructure
 Blocks: SCRUM-88 (E3-01 k3s bootstrap), SCRUM-95 (E3-08 Prometheus K8s SD)
 Note: Original "3+1 EC2s" scope is replaced by K8s migration. This story is rescoped, not closed.
+Note: ECR is NOT included — first-party images are built locally and imported into k3s containerd
+(see SCRUM-89/E3-02). Adding ECR is a future optimization when going multi-node.
 ```
 
 **Bump Story Points** from current value to **5**.
@@ -180,9 +180,9 @@ After import, confirm:
 - [ ] **All 14 new stories** appear in the Sprint 2 board under their correct epic
 - [ ] **Story point total** for Sprint 2 is roughly:
   - Existing in-flight (Done + In Review + In Progress + To Do): ~70 points (estimate based on current CSV)
-  - New K8s stories: **39 points**
+  - New K8s stories: **37 points**
   - New AI stories: **8 points**
-  - **New total: ~117 points** for the 2-week extension
+  - **New total: ~115 points** for the 2-week extension
 - [ ] **Critical path** sequencing visible in the board (E3-00 → E3-01 → E3-02 → E3-03/04/05/06 → E3-07/08/09 → E3-10)
 
 ---
@@ -197,7 +197,7 @@ After import, confirm:
 | Stories — In Progress | 6 | 6 (unchanged) |
 | Stories — To Do | 9 | 9 − 1 superseded (SCRUM-82) + 14 new = **22** |
 | Total stories | 29 | **42** |
-| Story points (rough) | ~70 | **~117** |
+| Story points (rough) | ~70 | **~115** |
 
 ---
 

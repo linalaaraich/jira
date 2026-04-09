@@ -212,29 +212,36 @@ items.append(make_row(
 
 # ---- E3-02 ----
 items.append(make_row(
-    summary="E3-02: Container image pipeline — ECR + GitHub Actions for triage and 5 MCP servers",
+    summary="E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",
     key="SCRUM-89", iid=10152,
-    issue_type="Story", priority="Highest", story_points=5,
+    issue_type="Story", priority="Highest", story_points=3,
     parent_iid=EPIC3_IID, parent_key=EPIC3_KEY, parent_summary=EPIC3_SUMMARY,
-    labels=["Kubernetes", "CI/CD"],
+    labels=["Kubernetes", "Ansible", "Images"],
     description=(
-        "As a platform engineer, I need an image registry the cluster can pull from and a "
-        "CI pipeline that builds and pushes images on commit so that Helm-deployed pods "
-        "can run our first-party code.\n\n"
+        "As a platform engineer, I need first-party container images (triage service + 5 MCP "
+        "servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can "
+        "run them without a registry.\n\n"
+        "Why no registry/CI: this is a single-node k3s cluster with one or two contributors. "
+        "ECR + GitHub Actions adds operational surface area we don't need at this scale. "
+        "k3s's containerd lets us import images directly from a tarball, which is enough.\n\n"
         "Acceptance Criteria:\n"
-        "- ECR repositories created via Terraform: cires/triage-service, cires/mcp-prometheus, "
-        "cires/mcp-loki, cires/mcp-jaeger, cires/mcp-drain3, cires/mcp-rca-history\n"
-        "- GitHub Actions workflow .github/workflows/build-images.yml builds and pushes on push to main and on tags\n"
-        "- Images tagged with both git short-SHA and semver tag\n"
-        "- Pull authentication from k3s to ECR via IRSA, OR via imagePullSecret created from ECR auth token (with refresh CronJob)\n"
-        "- Dockerfiles for triage service and 5 MCP servers extracted from current docker-compose builds\n"
-        "- Verification: docker pull <ecr-url>/cires/triage-service:<sha> works from a fresh machine\n"
-        "- All image references in Helm charts use pinned tags, never :latest\n\n"
-        "Story Points: 5\n"
-        "Estimate: 1 day\n"
+        "- Dockerfiles for triage service and 5 MCP servers exist (extracted from current docker-compose builds)\n"
+        "- New Ansible role/tasks that, for each image:\n"
+        "  1. docker build -t cires/<name>:<tag> <context>\n"
+        "  2. docker save cires/<name>:<tag> -o /tmp/<name>.tar\n"
+        "  3. ssh to k3s host (or run locally if same host) and: sudo k3s ctr images import /tmp/<name>.tar\n"
+        "- Image tag pinned via a single image_tag variable in group_vars (e.g. '1.0.0' or git short-sha)\n"
+        "- All Helm charts reference cires/<name>:<image_tag> with imagePullPolicy: IfNotPresent\n"
+        "- Verification: sudo k3s crictl images on the host shows all 6 cires/* images present\n"
+        "- Verification: helm install of the AI stack chart succeeds without ImagePullBackOff\n"
+        "- Documentation: README explains the build+import flow and the upgrade path to ECR+CI when multi-node is needed\n\n"
+        "Defensible scope decision: registry+CI is the right answer at multi-node scale or with many contributors. "
+        "We can swap to ECR with a one-line Helm values change when that's needed. Sprint 2 doesn't need it.\n\n"
+        "Story Points: 3\n"
+        "Estimate: 0.5 day\n"
         "Epic: K8s Migration\n"
-        "Blocks: E3-05 (AI stack chart cannot deploy without images in registry)\n"
-        "Blocked by: E3-00"
+        "Blocks: E3-05 (AI stack chart can't run without images loaded)\n"
+        "Blocked by: E3-00, E3-01"
     ),
 ))
 
@@ -617,4 +624,4 @@ print(f"Wrote {len(items)} rows to {out_path}")
 print(f"  Epics: 2 (Epic 3 K8s Migration, Epic 4 AI Hardening)")
 print(f"  K8s stories: 11 (E3-00 through E3-10)")
 print(f"  AI stories:  3 (AI-01, AI-02, AI-03)")
-print(f"Total story points: K8s={3+3+5+3+3+5+5+3+3+3+3} AI={3+2+3} -> {38+8} new points")
+print(f"Total story points: K8s={3+3+3+3+3+5+5+3+3+3+3} AI={3+2+3} -> {37+8} new points")
