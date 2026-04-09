@@ -27,6 +27,12 @@ Acceptance Criteria:
 - New inventory group k3s_cluster wired into site.yml
 - Verification: kubectl get nodes returns 1 Ready node from the control machine
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-03 through E3-10
 Blocked by: SCRUM-63 (rescoped Terraform)",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-02,"E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",Story,To Do,Highest,Kubernetes,"As a platform engineer, I need first-party container images (triage service + 5 MCP servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can run them without a registry.
@@ -45,6 +51,12 @@ Acceptance Criteria:
 - Verification: helm install of AI stack succeeds without ImagePullBackOff
 - README documents build+import flow and the upgrade path to ECR+CI when multi-node is needed
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-05
 Blocked by: E3-01",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-03,E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes),Story,To Do,High,Kubernetes,"As a developer, I need a Helm chart that deploys the Spring Boot backend into k3s so that the application is reachable from Kong and can talk to RDS.
@@ -62,6 +74,12 @@ Acceptance Criteria:
 - Pod reaches RDS (verified via /actuator/health)
 - Spring Boot logs include trace_id (OTel agent injected)
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-09, E3-10
 Blocked by: E3-01",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-04,"E3-04: Helm chart — Kong via upstream chart, DB-less mode, kong.yml as ConfigMap",Story,To Do,High,Kubernetes,"As a platform engineer, I need Kong running inside the cluster as the API gateway.
@@ -77,6 +95,12 @@ Acceptance Criteria:
 - Service exposed externally via NodePort or LoadBalancer (decision documented)
 - Verification: curl through Kong reaches Spring Boot, traces appear in Jaeger
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-09, E3-10
 Blocked by: E3-01, E3-03",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-05,E3-05: Helm chart — AI stack (triage service + 5 MCP servers + Ollama),Story,To Do,High,Kubernetes,"As an SRE, I need the entire AI RCA pipeline deployed via a single Helm chart so triage, MCP servers, and Ollama share a lifecycle and can roll back together.
@@ -95,6 +119,12 @@ Acceptance Criteria:
 - Liveness + readiness probes per container
 - Verification: triage /health responds, MCP servers respond, Ollama returns model list
 
+---
+Story Points: 5
+Estimate: 1 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-09, E3-10
 Blocked by: E3-01, E3-02, E3-06",SCRUM Sprint 2,5,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-06,E3-06: NVIDIA device plugin DaemonSet + Ollama GPU verification spike,Story,To Do,Highest,Kubernetes,"As a platform engineer, I need to verify GPU passthrough on k3s so Ollama can use the GPU. This is a spike — plan for fiddly debugging.
@@ -108,6 +138,12 @@ Acceptance Criteria:
 - Decision documented: GPU on the same EC2 or separate g4dn.xlarge worker node
 - If separate: node tainted, Ollama pod has matching toleration
 
+---
+Story Points: 5
+Estimate: 1 day (spike, may extend to 1.5)
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-05
 Blocked by: E3-01",SCRUM Sprint 2,5,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-07,E3-07: In-cluster OTel Collector DaemonSet — log/trace forwarding to monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need an OTel Collector running on every K8s node so container logs and traces are enriched with K8s metadata and forwarded to the monitoring VM.
@@ -126,6 +162,12 @@ Acceptance Criteria:
 - Verification: Spring Boot log line appears in Loki on the monitoring VM with correct labels
 - Verification: trace from Spring Boot or Kong appears in Jaeger
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-10
 Blocked by: E3-01, E3-03, E3-04, E3-05",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-08,E3-08: Prometheus kubernetes_sd_configs scrape job + RBAC for monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need the existing external Prometheus to discover and scrape K8s-hosted services so all metrics keep flowing to the same datastore.
@@ -143,6 +185,12 @@ Acceptance Criteria:
 - Security group on k3s EC2 allows monitoring VM IP on :6443 and :10250
 - Verification: Prometheus targets page shows healthy K8s targets
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-09, E3-10
 Blocked by: E3-01, SCRUM-63 (security group update)",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-09,E3-09: Migrate the 17 Grafana alert rules to K8s pod-based label selectors,Story,To Do,Highest,Kubernetes,"As an SRE, I need every Grafana alert rule's selector updated to match the K8s-hosted target so alerts continue to fire correctly. High-risk: silent failure if missed.
@@ -158,6 +206,12 @@ Acceptance Criteria:
 - Triage service receives the test webhook for each rule
 - No rule left with a stale selector
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocks: E3-10
 Blocked by: E3-03, E3-04, E3-05, E3-08",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 E3-10,E3-10: End-to-end K8s validation playbook — full pipeline against K8s target,Story,To Do,Highest,Kubernetes,"As an SRE, I need an automated end-to-end test against the K8s target so the migration is provably complete.
@@ -178,6 +232,12 @@ Acceptance Criteria:
 - All checks scripted, exit code 0 = pass
 - Replaces SCRUM-66 (E1-05) — that ticket closes in favor of this one
 
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
 Blocked by: E3-03, E3-04, E3-05, E3-06, E3-07, E3-08, E3-09",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
 EPIC4,Epic 4 -- AI Triage Service Hardening,Epic,To Do,Medium,AI,"Targeted reliability and observability improvements to the AI triage pipeline beyond the MVP. Three high-leverage stories covering the most impactful weaknesses identified after Epic 2. Larger AI maturity work (calibration sets, prompt engineering, model A/B testing) is deferred to a future sprint.
 
@@ -194,7 +254,16 @@ Acceptance Criteria:
 - Fallback: when circuit open or retries exhausted, produce 'NEEDS_HUMAN_REVIEW' verdict with raw alert context, sent via existing escalation email path
 - Metrics: ollama_request_duration_seconds, ollama_request_total{status}, ollama_circuit_state
 - Unit tests for timeout, retry, circuit breaker open/close transitions
-- Manual test: kill Ollama mid-request, verify pipeline produces fallback within timeout + retry budget",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
+- Manual test: kill Ollama mid-request, verify pipeline produces fallback within timeout + retry budget
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: (none) — independent of K8s migration",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
 AI-02,AI-02: JSON schema enforcement on LLM verdict — Ollama JSON mode + Pydantic validator,Story,To Do,Highest,AI,"As an SRE, I need the LLM verdict to be structured JSON validated against a strict schema so triage can reliably parse it without fragile string matching.
 
 Acceptance Criteria:
@@ -211,7 +280,16 @@ Acceptance Criteria:
 - On second failure, escalate to NEEDS_HUMAN_REVIEW (uses fallback path from AI-01)
 - Existing free-text 'ESCALATE/DISMISS' parser removed
 - Unit tests for valid response, schema failure, retry recovery, double failure
-- Schema documented in monitoring-docs",SCRUM Sprint 2,2,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
+- Schema documented in monitoring-docs
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: AI-01 (uses its NEEDS_HUMAN_REVIEW fallback path)",SCRUM Sprint 2,2,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
 AI-03,"AI-03: Triage service self-observability — /metrics with queue depth, latency, error rates",Story,To Do,High,AI,"As an SRE, I need the triage service to expose its own operational metrics so I can observe and improve its behavior.
 
 Acceptance Criteria:
@@ -230,4 +308,13 @@ Acceptance Criteria:
 - New Grafana panel 'Triage Service Health' added to unified-overview:
   - Decision throughput, latency p50/p95/p99, verdict breakdown, MCP error rates, fallback rate
 - Dashboard JSON committed to git
-- Verification: test alert produces visible metric updates within 30s",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
+- Verification: test alert produces visible metric updates within 30s
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: (none) — independent of K8s migration",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
