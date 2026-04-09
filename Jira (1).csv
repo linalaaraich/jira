@@ -1,0 +1,604 @@
+Summary,Issue key,Issue id,Issue Type,Status,Project key,Project name,Project type,Project lead,Project lead id,Project description,Priority,Resolution,Assignee,Assignee Id,Reporter,Reporter Id,Creator,Creator Id,Created,Updated,Last Viewed,Resolved,Due date,Votes,Labels,Labels,Labels,Labels,Description,Environment,Watchers,Watchers Id,Original estimate,Remaining Estimate,Time Spent,Work Ratio,Σ Original Estimate,Σ Remaining Estimate,Σ Time Spent,Security Level,Custom field (Development),Custom field (Issue color),Custom field (Rank),Sprint,Custom field (Start date),Custom field (Story point estimate),Team Id,Team Name,Custom field (Vulnerability),Parent,Parent key,Parent summary,Status Category,Status Category Changed
+"AI-03: Triage service self-observability — /metrics with queue depth, latency, error rates",SCRUM-131,10226,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:26 PM,09/Apr/26 4:26 PM,,22/Apr/26 12:00 AM,0,AI,,,,"As an SRE, I need the triage service to expose its own operational metrics so I can observe and improve its behavior.
+
+Acceptance Criteria:
+- Triage service exposes /metrics in Prometheus format
+- Metrics:
+  - triage_alerts_received_total{source}
+  - triage_alerts_processed_total{verdict}
+  - triage_decision_duration_seconds (histogram)
+  - triage_queue_depth (gauge)
+  - triage_mcp_request_total{server,status}
+  - triage_mcp_duration_seconds{server} (histogram)
+  - triage_llm_token_count{type='prompt'|'completion'} (histogram)
+  - triage_fallback_total{reason}
+  - triage_email_sent_total{status}
+- Prometheus annotations on the triage Service (prometheus.io/scrape, /port, /path)
+- New Grafana panel 'Triage Service Health' added to unified-overview:
+  - Decision throughput, latency p50/p95/p99, verdict breakdown, MCP error rates, fallback rate
+- Dashboard JSON committed to git
+- Verification: test alert produces visible metric updates within 30s
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: (none) — independent of K8s migration",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000ev:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10213,SCRUM-118,Epic 4 -- AI Triage Service Hardening,To Do,09/Apr/26 4:19 PM
+AI-02: JSON schema enforcement on LLM verdict — Ollama JSON mode + Pydantic validator,SCRUM-130,10225,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:26 PM,09/Apr/26 4:26 PM,,22/Apr/26 12:00 AM,0,AI,,,,"As an SRE, I need the LLM verdict to be structured JSON validated against a strict schema so triage can reliably parse it without fragile string matching.
+
+Acceptance Criteria:
+- Ollama API call uses 'format: json' parameter (Ollama JSON mode)
+- System prompt instructs the model to return JSON matching a documented schema
+- Pydantic model for the verdict:
+  { verdict: 'ESCALATE'|'DISMISS'|'INCONCLUSIVE',
+    confidence: 0-1,
+    root_cause: str,
+    evidence: [str],
+    recommended_actions: [str],
+    alert_id: str }
+- Validator runs on every LLM response; on schema failure, retry once with the validation error appended
+- On second failure, escalate to NEEDS_HUMAN_REVIEW (uses fallback path from AI-01)
+- Existing free-text 'ESCALATE/DISMISS' parser removed
+- Unit tests for valid response, schema failure, retry recovery, double failure
+- Schema documented in monitoring-docs
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: AI-01 (uses its NEEDS_HUMAN_REVIEW fallback path)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000en:,SCRUM Sprint 2,09/Apr/26 12:00 AM,2.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10213,SCRUM-118,Epic 4 -- AI Triage Service Hardening,To Do,09/Apr/26 4:19 PM
+"AI-01: Ollama call hardening — timeout, retry, circuit breaker, fallback",SCRUM-129,10224,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:26 PM,09/Apr/26 4:25 PM,,22/Apr/26 12:00 AM,0,AI,,,,"As an SRE, I need the triage service's Ollama calls to be resilient to timeouts and failures so a slow or hung Ollama doesn't stall the pipeline.
+
+Acceptance Criteria:
+- Configurable per-request timeout (default 30s, override via env var)
+- Retry policy: up to 2 retries with exponential backoff on transient failures
+- Circuit breaker: after 5 consecutive failures, mark Ollama 'down' for 60s cooldown
+- Fallback: when circuit open or retries exhausted, produce 'NEEDS_HUMAN_REVIEW' verdict with raw alert context, sent via existing escalation email path
+- Metrics: ollama_request_duration_seconds, ollama_request_total{status}, ollama_circuit_state
+- Unit tests for timeout, retry, circuit breaker open/close transitions
+- Manual test: kill Ollama mid-request, verify pipeline produces fallback within timeout + retry budget
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 4 -- AI Triage Service Hardening
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: (none)
+Blocked by: (none) — independent of K8s migration",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000ef:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10213,SCRUM-118,Epic 4 -- AI Triage Service Hardening,To Do,09/Apr/26 4:19 PM
+E3-10: End-to-end K8s validation playbook — full pipeline against K8s target,SCRUM-128,10223,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:25 PM,09/Apr/26 4:25 PM,,22/Apr/26 12:00 AM,0,Kubernetes,,,,"As an SRE, I need an automated end-to-end test against the K8s target so the migration is provably complete.
+
+Acceptance Criteria:
+- New playbook playbooks/integration-k8s.yml (or update existing integration.yml)
+- Test sequence:
+  1. Run load-test.sh against Kong's external endpoint
+  2. Verify Spring Boot pod metrics in Prometheus (RED)
+  3. Verify Spring Boot logs in Loki with trace_id label
+  4. Verify trace in Jaeger end-to-end (Kong -> Spring -> RDS)
+  5. Trigger an alert (high latency)
+  6. Verify Grafana alert fires
+  7. Verify webhook arrives at triage service
+  8. Verify triage produces a verdict
+  9. Verify LLM analysis runs and returns RCA JSON
+ 10. Verify escalation email sent (or DISMISS logged)
+- All checks scripted, exit code 0 = pass
+- Replaces SCRUM-66 (E1-05) — that ticket closes in favor of this one
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocked by: E3-03, E3-04, E3-05, E3-06, E3-07, E3-08, E3-09",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000e7:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-09: Migrate the 17 Grafana alert rules to K8s pod-based label selectors,SCRUM-127,10222,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:25 PM,09/Apr/26 4:24 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As an SRE, I need every Grafana alert rule's selector updated to match the K8s-hosted target so alerts continue to fire correctly. High-risk: silent failure if missed.
+
+Acceptance Criteria:
+- Audit current Grafana alerting: 17 rules in 3 groups (per CLAUDE.md)
+- Rewrite each rule's label selector:
+  - Old: instance='application_vm_ip:8080' -> New: pod=~'spring-boot.*', namespace='app'
+  - Old: instance='network_vm_ip:8000'     -> New: pod=~'kong.*',        namespace='network'
+  - Old: instance='ai_vm_ip:8090'           -> New: pod=~'triage.*',      namespace='ai'
+- Updated rules committed to git, applied via Grafana provisioning
+- Each rule manually triggered and verified to fire
+- Triage service receives the test webhook for each rule
+- No rule left with a stale selector
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-10
+Blocked by: E3-03, E3-04, E3-05, E3-08",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000dz:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-08: Prometheus kubernetes_sd_configs scrape job + RBAC for monitoring VM,SCRUM-126,10221,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:25 PM,09/Apr/26 4:25 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As an observability engineer, I need the existing external Prometheus to discover and scrape K8s-hosted services so all metrics keep flowing to the same datastore.
+
+Acceptance Criteria:
+- New ServiceAccount prometheus-scraper in namespace observability
+- ClusterRole granting get/list/watch on nodes, pods, services, endpoints + nonResourceURLs /metrics
+- ClusterRoleBinding to the SA
+- SA token extracted, stored as Ansible vault secret on the monitoring VM
+- roles/prometheus updated with kubernetes_sd_configs scrape job:
+  - role: pod, with annotation-based filtering
+  - api_server: k3s host :6443
+  - bearer_token_file: the new secret
+  - relabel_configs: keep pods with prometheus.io/scrape='true', use prometheus.io/port
+- Security group on k3s EC2 allows monitoring VM IP on :6443 and :10250
+- Verification: Prometheus targets page shows healthy K8s targets
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-09, E3-10
+Blocked by: E3-01, SCRUM-63 (security group update)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000dr:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-07: In-cluster OTel Collector DaemonSet — log/trace forwarding to monitoring VM,SCRUM-125,10220,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:24 PM,09/Apr/26 4:24 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As an observability engineer, I need an OTel Collector running on every K8s node so container logs and traces are enriched with K8s metadata and forwarded to the monitoring VM.
+
+Acceptance Criteria:
+- New manifest set or chart deploys:
+  - Namespace observability
+  - ServiceAccount + ClusterRole granting access to nodes/pods/namespaces
+  - DaemonSet running otel/opentelemetry-collector-contrib (version pinned)
+  - ConfigMap with collector config:
+    * filelog receiver tailing /var/log/pods/*/*/*.log
+    * k8sattributes processor enriching with pod, namespace, container, trace_id
+    * OTLP receiver on :4317 / :4318
+    * OTLP exporter pushing to monitoring_vm_ip:4317
+- Per-VM OTel Collector containers retired from compose templates
+- Verification: Spring Boot log line appears in Loki on the monitoring VM with correct labels
+- Verification: trace from Spring Boot or Kong appears in Jaeger
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-10
+Blocked by: E3-01, E3-03, E3-04, E3-05",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000dj:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-06: NVIDIA device plugin DaemonSet + Ollama GPU verification spike,SCRUM-124,10219,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:24 PM,09/Apr/26 4:24 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As a platform engineer, I need to verify GPU passthrough on k3s so Ollama can use the GPU. This is a spike — plan for fiddly debugging.
+
+Acceptance Criteria:
+- NVIDIA Container Toolkit installed on the k3s host (via repurposed nvidia_docker role)
+- containerd configured with the nvidia runtime
+- NVIDIA device plugin DaemonSet deployed (k8s-device-plugin v0.15.0)
+- Test pod requesting nvidia.com/gpu: 1 runs and nvidia-smi output is visible
+- Troubleshooting guide added to monitoring-docs (driver mismatch, runtime not configured, plugin CrashLoopBackOff)
+- Decision documented: GPU on the same EC2 or separate g4dn.xlarge worker node
+- If separate: node tainted, Ollama pod has matching toleration
+
+---
+Story Points: 5
+Estimate: 1 day (spike, may extend to 1.5)
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-05
+Blocked by: E3-01",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000db:,SCRUM Sprint 2,09/Apr/26 12:00 AM,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-05: Helm chart — AI stack (triage service + 5 MCP servers + Ollama),SCRUM-123,10218,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:24 PM,09/Apr/26 4:23 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As an SRE, I need the entire AI RCA pipeline deployed via a single Helm chart so triage, MCP servers, and Ollama share a lifecycle and can roll back together.
+
+Acceptance Criteria:
+- New chart at charts/ai-stack/ containing:
+  - Triage service Deployment + Service (port 8090)
+  - 5x MCP server Deployments + Services (Prometheus :8091, Loki :8092, Jaeger :8093, Drain3 :8094, RCA History :8095)
+  - Ollama Deployment with PVC for model storage (20Gi minimum)
+  - GPU resource request on Ollama: nvidia.com/gpu: 1
+  - Init Job or postStart hook that pulls the Ollama model on first deploy
+  - Secret for SMTP credentials and Ollama config
+  - All inter-service references use Service DNS
+- All image references pinned to tags from E3-02
+- Resource requests + limits per container
+- Liveness + readiness probes per container
+- Verification: triage /health responds, MCP servers respond, Ollama returns model list
+
+---
+Story Points: 5
+Estimate: 1 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-09, E3-10
+Blocked by: E3-01, E3-02, E3-06",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000d3:,SCRUM Sprint 2,09/Apr/26 12:00 AM,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+"E3-04: Helm chart — Kong via upstream chart, DB-less mode, kong.yml as ConfigMap",SCRUM-122,10217,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:23 PM,09/Apr/26 4:23 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As a platform engineer, I need Kong running inside the cluster as the API gateway.
+
+Acceptance Criteria:
+- Upstream kong/kong Helm chart, chart_version pinned (e.g. 2.38.0)
+- DB-less mode enabled
+- Existing kong.yml converted to a ConfigMap mounted into the Kong pod
+- Upstream URLs in kong.yml rewritten from application_vm_ip:8080 to spring-boot.app.svc.cluster.local:80
+- React frontend route still points to CloudFront
+- OTel plugin enabled, sends spans to in-cluster OTel Collector via OTLP
+- Prometheus plugin enabled, /metrics scraped by Prometheus K8s SD
+- Service exposed externally via NodePort or LoadBalancer (decision documented)
+- Verification: curl through Kong reaches Spring Boot, traces appear in Jaeger
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-09, E3-10
+Blocked by: E3-01, E3-03",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000cv:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes),SCRUM-121,10216,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:22 PM,09/Apr/26 4:22 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As a developer, I need a Helm chart that deploys the Spring Boot backend into k3s so that the application is reachable from Kong and can talk to RDS.
+
+Acceptance Criteria:
+- New chart at charts/spring-boot/ with Chart.yaml, values.yaml, templates/
+- Deployment template: configurable replicas, resource requests + limits
+- Liveness probe (/actuator/health/liveness), readiness probe (/actuator/health/readiness)
+- Service template (ClusterIP, port 80 -> targetPort 8080)
+- ConfigMap for Spring application properties
+- Secret reference for RDS credentials (DB_USERNAME, DB_PASSWORD, DB_URL)
+- ServiceAccount for the pod
+- Image pinned by tag (no :latest)
+- Installable via helm install spring-boot charts/spring-boot/ -n app --create-namespace
+- Pod reaches RDS (verified via /actuator/health)
+- Spring Boot logs include trace_id (OTel agent injected)
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-09, E3-10
+Blocked by: E3-01",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000cn:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+"E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",SCRUM-120,10215,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:22 PM,09/Apr/26 4:23 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As a platform engineer, I need first-party container images (triage service + 5 MCP servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can run them without a registry.
+
+Why no registry/CI: single-node k3s with one or two contributors. ECR + GitHub Actions adds operational surface area we don't need. k3s containerd lets us import tarballs directly.
+
+Acceptance Criteria:
+- Dockerfiles for triage + 5 MCP servers exist (extracted from current docker-compose builds)
+- Ansible role/tasks that, for each image:
+  1. docker build -t cires/<name>:<tag> <context>
+  2. docker save cires/<name>:<tag> -o /tmp/<name>.tar
+  3. sudo k3s ctr images import /tmp/<name>.tar (on k3s host)
+- Image tag pinned via single image_tag variable in group_vars
+- All Helm charts reference cires/<name>:<image_tag> with imagePullPolicy: IfNotPresent
+- Verification: sudo k3s crictl images shows all 6 cires/* images
+- Verification: helm install of AI stack succeeds without ImagePullBackOff
+- README documents build+import flow and the upgrade path to ECR+CI when multi-node is needed
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-05
+Blocked by: E3-01",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000cf:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+"E3-01: Bootstrap k3s on EC2 via Ansible — xanmanning.k3s, pinned, Traefik disabled",SCRUM-119,10214,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:23 PM,09/Apr/26 4:23 PM,,20/Apr/26 12:00 AM,0,Kubernetes,,,,"As a platform engineer, I need a single-node k3s cluster running on EC2 so that the Helm-deployed workloads have somewhere to run.
+
+Acceptance Criteria:
+- xanmanning.k3s role added to requirements.yml, version v3.4.4 pinned
+- New playbook playbooks/k3s.yml bootstraps k3s on a single host
+- k3s_release_version pinned to a specific v1.30.x+k3s1 release
+- Traefik disabled (k3s_server.disable: [traefik])
+- write-kubeconfig-mode: '0644'
+- kubeconfig fetched back to control machine, server URL rewritten from 127.0.0.1 to EC2 IP
+- New inventory group k3s_cluster wired into site.yml
+- Verification: kubectl get nodes returns 1 Ready node from the control machine
+
+---
+Story Points: 3
+Estimate: 0.5 day
+Epic: Epic 3 -- K8s Migration
+Sprint: SCRUM Sprint 2
+Due date: 23 Apr 2026
+Blocks: E3-03 through E3-10
+Blocked by: SCRUM-63 (rescoped Terraform)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000c7:,SCRUM Sprint 2,09/Apr/26 12:00 AM,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10212,SCRUM-117,Epic 3 -- Kubernetes Migration of Monitored Target,To Do,09/Apr/26 4:19 PM
+Epic 4 -- AI Triage Service Hardening,SCRUM-118,10213,Epic,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Medium,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:27 PM,,,,0,AI,,,,"Targeted reliability and observability improvements to the AI triage pipeline beyond the MVP. Three high-leverage stories covering the most impactful weaknesses identified after Epic 2. Larger AI maturity work (calibration sets, prompt engineering, model A/B testing) is deferred to a future sprint.
+
+Goals:
+- Eliminate Ollama-related pipeline hangs
+- Replace fragile free-text parsing with strict JSON schema enforcement
+- Add self-observability so future iteration is data-driven",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000bz:,,09/Apr/26 12:00 AM,,,,,,,,To Do,09/Apr/26 4:19 PM
+Epic 3 -- Kubernetes Migration of Monitored Target,SCRUM-117,10212,Epic,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,09/Apr/26 4:19 PM,09/Apr/26 4:27 PM,09/Apr/26 4:27 PM,,,0,Kubernetes,,,,"Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama) from per-VM docker-compose to a single-node k3s cluster on EC2. The monitoring stack (Prometheus, Grafana, Loki, Jaeger) stays on its own VM and reaches into the cluster via kubernetes_sd_configs and an in-cluster OTel Collector DaemonSet.
+
+Goals:
+- Single-node k3s cluster on EC2 (HA deferred)
+- Three Helm charts: Spring Boot (in-house), Kong (upstream), AI stack (in-house)
+- First-party images built locally and imported into k3s containerd (no registry, no CI)
+- Monitoring VM unchanged but reconfigured to scrape the cluster
+- All 17 Grafana alert rules migrated to K8s label selectors
+- End-to-end validation against the K8s target
+
+Out of scope (sprint 3+):
+- Multi-node HA / k3s embedded etcd
+- ArgoCD / GitOps adoption
+- Calico / Cilium for NetworkPolicy enforcement
+- Longhorn for distributed storage
+- Migrating the monitoring stack itself to K8s (deliberately rejected)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000br:,,09/Apr/26 12:00 AM,,,,,,,,To Do,09/Apr/26 4:19 PM
+Epic 2 -- AI RCA System MVP,SCRUM-85,10148,Epic,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Medium,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 9:13 AM,09/Apr/26 11:20 AM,09/Apr/26 4:15 PM,,23/Apr/26 12:00 AM,0,Alerting,Anomaly-Detection,"LLM,",Observability,,,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,dark_blue,0|i000bj:,SCRUM Sprint 2,25/Mar/26 12:00 AM,,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,,,,To Do,31/Mar/26 9:13 AM
+Epic 1 -- AWS Infrastructure Provisioning and Configuration,SCRUM-84,10147,Epic,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Medium,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 9:13 AM,09/Apr/26 11:19 AM,09/Apr/26 4:16 PM,,23/Apr/26 12:00 AM,0,Ansible,AWS,Terraform,,,,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,dark_green,0|i000bb:,SCRUM Sprint 2,25/Mar/26 12:00 AM,,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,,,,To Do,31/Mar/26 9:13 AM
+"E2-12: End-to-end integration — load-test, alert, triage, LLM, RCA email",SCRUM-83,10114,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:16 AM,09/Apr/26 11:16 AM,,20/Apr/26 12:00 AM,0,Validation,,,,"As a developer, I can trigger a real alert and see the full pipeline execute end-to-end so that the MVP is proven. This is the Sprint 2 demo gate.
+
+Acceptance Criteria:
+- load-test.sh triggers latency alert (p95 > 500ms/5m)
+- Layer 1: Grafana fires webhook to :8090 — verified in logs
+- Layer 2: Triage deduplicates, checks history, decides investigate
+- Layer 3: Ollama queries MCP bridges — logs show calls to Prometheus, Loki, Jaeger, Drain3, RCA History
+- Structured JSON verdict: ESCALATE or DISMISS with RCA
+- On ESCALATE: email received with Drain3 annotations, evidence, suggested actions
+- Decision stored in SQLite — visible at GET /decisions
+- Total pipeline latency under 60 seconds
+- Second identical alert within 5 min: deduplicated (no second LLM call)
+- RCA History MCP: second investigation references first RCA
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)
+Milestone: Sprint 2 complete",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000b3:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-11: Docker-compose for AI stack — triage + 5 MCP servers + Ollama,SCRUM-82,10113,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:16 AM,09/Apr/26 11:15 AM,,16/Apr/26 12:00 AM,0,Docker,,,,"As a developer, I can containerize the full AI triage stack with docker-compose so that it deploys reproducibly.
+
+Acceptance Criteria:
+- ai-compose.yml.j2 Ansible template with 7 services
+- triage-service: port 8090, volumes for drain3_state and rca_history.db
+- ollama: port 11434, runtime:nvidia for GPU passthrough, model storage volume
+- prometheus-mcp: port 8091, PROMETHEUS_URL from group_vars
+- loki-mcp: port 8092, LOKI_URL from group_vars
+- jaeger-mcp: port 8093, JAEGER_URL from group_vars
+- drain3-mcp: port 8094, connects to triage Drain3 state
+- rca-history-mcp: port 8095, reads triage SQLite volume
+- nvidia-container-toolkit installed on AI VM
+- Health checks for all 7 services
+- Ansible host group ai added; playbooks/ai.yml deploys full stack
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000av:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-10: Decision history — /decisions endpoint + RCA History MCP (:8095) + dashboard,SCRUM-81,10112,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,wael zidane,712020:d45469f1-f3f4-4e45-83b5-562ffe44172a,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:15 AM,09/Apr/26 11:15 AM,,17/Apr/26 12:00 AM,0,FastAPI,,,,"As a developer, I can view all past RCA decisions so that the demo shows decision history and audit trail.
+
+Acceptance Criteria:
+- SQLite at /data/rca_history.db (volume-mounted) with full schema
+- GET /decisions returns last N (default 50), sorted by timestamp desc
+- GET /decisions?alert_name=X filters by alert name
+- RCA History MCP on port 8095: get_recent_rcas(hours), search_rcas(alert_name, days), get_rca_detail(rca_id), get_alert_frequency(alert_name, days)
+- Optional: /dashboard HTML page showing decision log as styled table
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000an:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-09: 5-minute timeout fallback — raw alert passthrough (safety gate),SCRUM-80,10111,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:15 AM,09/Apr/26 11:15 AM,,14/Apr/26 12:00 AM,0,"FastAPI,",Safety,,,"As an on-call engineer, if the LLM takes longer than 5 minutes I still receive the raw alert so that the AI layer never silently swallows an alert.
+
+Acceptance Criteria:
+- Entire pipeline in asyncio.wait_for(timeout=300)
+- On TimeoutError: raw alert email with subject [ALERT] TIMEOUT: alert_name
+- Timeout logged with alertname, elapsed time, pipeline stage at timeout
+- Stored in RCA History as triage_decision: timeout_passthrough
+- Implemented and tested BEFORE LLM integration
+- Test: mock Ollama with 6-min sleep then verify raw alert email at exactly 5 min
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000af:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,09/Apr/26 10:51 AM
+E2-08: ESCALATE action — send RCA email via SMTP,SCRUM-79,10110,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:14 AM,09/Apr/26 11:14 AM,,14/Apr/26 12:00 AM,0,FastAPI,,,,"As an on-call engineer, when the LLM decides ESCALATE I receive an email with the full RCA so that I have actionable context without opening any dashboard.
+
+Acceptance Criteria:
+- On ESCALATE: email via smtplib with Gmail SMTP (smtp.gmail.com:587, TLS)
+- Subject: [ALERT] severity: alert_name — affected_service
+- Body: alert name, firing time, severity, LLM RCA report, suggested actions, confidence, evidence, dashboard links, RCA history context
+- On DISMISS: no email, decision logged with reasoning
+- Every decision stored in SQLite RCA History with full schema
+- SMTP credentials via env vars
+- SMTP failure does not crash pipeline — logged, decision still stored
+- Test: trigger ESCALATE then verify email received with all fields
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i000a7:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,07/Apr/26 11:11 AM
+E2-07: LLM prompt template + ESCALATE/DISMISS decision parser,SCRUM-78,10109,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:14 AM,09/Apr/26 11:14 AM,,14/Apr/26 12:00 AM,0,LLM,,,,"As an on-call engineer, I receive ESCALATE or DISMISS with a written RCA so that I know exactly what action to take.
+
+Acceptance Criteria:
+- System prompt defines SRE assistant role with clear investigation instructions
+- Prompt includes: alert metadata, pre-gathered context (metrics + Drain3-annotated logs + traces), MCP tool definitions for all 5 bridges
+- LLM responds with JSON: decision, severity, reason, rca, anomaly_summary, suggested_actions, evidence
+- Pydantic LLMDecision validates output — decision enum: ESCALATE or DISMISS
+- On parse failure: retry once with stricter instruction, then default ESCALATE (safe fallback)
+- Raw LLM response always logged regardless of parse success
+- Queries Ollama at :11434/api/chat with MCP tool definitions — LLM autonomously calls tools
+- Cross-pillar instruction in prompt
+- Investigation duration logged
+
+Story Points: 8
+Estimate: 1.5 days
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0009z:,SCRUM Sprint 2,,8.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,07/Apr/26 11:11 AM
+E2-06: Parallel context fan-out — Prometheus + Loki + Jaeger,SCRUM-77,10108,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:14 AM,09/Apr/26 11:14 AM,,14/Apr/26 12:00 AM,0,FastAPI,,,,"As the triage service, I can concurrently query all three pillars so that context gathering stays under 10 seconds.
+
+Acceptance Criteria:
+- asyncio.gather queries Prometheus (query_range, T-15m), Loki (search_logs, 50 lines), Jaeger (find_traces, 20 limit) concurrently
+- Per-source timeout: 8 seconds — on timeout, partial context with note
+- Total gathering under 10 seconds
+- Loki lines passed through Drain3 analyze() for annotation
+- Jaeger data includes span names, durations, error flags, trace_ids
+- Prometheus data includes metric values, timestamps, labels
+- If all sources timeout: LLM still invoked with alert metadata + MCP tools (degraded mode)
+- Logged with per-source latency: prometheus_ms, loki_ms, jaeger_ms, total_ms
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0009r:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,06/Apr/26 2:16 PM
+E2-05: Alert deduplication + 5-min grouping window,SCRUM-76,10107,Story,In Review,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:14 AM,09/Apr/26 11:14 AM,,14/Apr/26 12:00 AM,0,FastAPI,,,,"As an operator, repeated firings of the same alert within 5 minutes are deduplicated so that Ollama is not called 20 times for one flapping alert.
+
+Acceptance Criteria:
+- In-memory dict keyed by (alertname, instance) with TTL = 5 minutes
+- Duplicate within window: LLM call skipped, logged as deduplicated with window_remaining_seconds
+- New or expired: proceeds to full pipeline
+- Thread-safe with asyncio.Lock
+- Resolve + re-fire within window: TTL resets, alert re-processed
+- All dedup events logged with alertname, instance, action, duplicate count
+- Test: 10 identical alerts in 5 min results in exactly 1 LLM invocation, 9 deduplicated
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0009j:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,06/Apr/26 2:13 PM
+"E2-04: FastAPI scaffold — webhook receivers, async processing, health endpoint",SCRUM-75,10106,Story,In Review,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Riham Kontar,712020:0897b05b-187b-416b-8b0f-af444750172b,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:12 AM,09/Apr/26 11:12 AM,,14/Apr/26 12:00 AM,0,FastAPI,,,,"As a developer, I can POST an alert webhook to /webhook/grafana and receive 202 Accepted immediately so that Grafana never times out.
+
+Acceptance Criteria:
+- POST /webhook/grafana accepts Grafana webhook JSON, returns 202 within 100ms
+- POST /webhook/drain3 accepts Drain3 notification JSON, returns 202 within 100ms
+- Both process async via FastAPI BackgroundTasks
+- Pydantic models: GrafanaWebhook and Drain3Webhook with validation
+- Invalid payloads return 422 with validation errors
+- GET /health returns status, uptime, version
+- GET /decisions returns last N decisions (default 50)
+- Structured JSON logging for all requests
+- Dockerfile with env vars: PROMETHEUS_URL, LOKI_URL, JAEGER_URL, OLLAMA_URL, SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFICATION_EMAIL
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)
+Blocks: Track B3",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0009b:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,02/Apr/26 11:23 AM
+E2-15: Drain3 observability — /stats endpoint + Prometheus metrics + MCP (:8094),SCRUM-74,10105,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:12 AM,09/Apr/26 11:12 AM,,14/Apr/26 12:00 AM,0,"Anomaly-Detection,",Observability,,,"As an operator, I can see Drain3 cluster statistics and anomaly rates so that I can validate the anomaly detection layer.
+
+Acceptance Criteria:
+- GET /drain3/stats returns: total_clusters, recent_anomaly_rate, top_new_patterns, last_snapshot_time, baseline_age_seconds
+- Prometheus metrics: drain3_clusters_total, drain3_anomalies_total, drain3_log_lines_processed_total, drain3_baseline_age_seconds
+- Triage service added as Prometheus scrape target
+- Grafana alert for drift detection (50+ new clusters/hour or anomaly rate <0.1% for 30min)
+- Drain3 MCP on port 8094: get_clusters(), get_anomaly_rate(), match_log(line), get_baseline_info()
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i00093:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-14: Drain3 + Loki integration — annotate log lines in LLM context,SCRUM-73,10104,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:12 AM,09/Apr/26 11:12 AM,,14/Apr/26 12:00 AM,0,Anomaly-Detection,,,,"As the triage service, I can stream recent logs through Drain3 and get anomaly scores so that the LLM context includes which log lines are novel vs routine.
+
+Acceptance Criteria:
+- During context gathering, every Loki log line passed through Drain3 analyze()
+- Each line prefixed: [ANOMALY] (new/rare, <5 matches) or [KNOWN] (established, >=5 matches)
+- Anomaly summary block in LLM context: X of Y lines anomalous, N new patterns, top templates
+- Annotated logs appear in prompt before MCP tool definitions
+- LLM can also query Drain3 MCP (:8094) for deeper analysis
+- Test: inject novel log pattern then verify it appears as [ANOMALY] in assembled prompt
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0008v:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-13: Drain3 setup — log template mining + persistence,SCRUM-72,10103,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:11 AM,09/Apr/26 11:11 AM,,14/Apr/26 12:00 AM,0,Anomaly-Detection,,,,"As the triage service, I have an unsupervised anomaly detection layer so that novel or rare log patterns are flagged before the LLM sees them.
+
+Acceptance Criteria:
+- drain3 pip package initialized within triage service process
+- drain3.ini: similarity threshold ~0.4, max clusters, depth tuned for Spring Boot and Kong logs
+- FileStatePersistence with volume mount — state survives restarts
+- On startup: fetch last 1h of logs from Loki to seed baseline (first run only)
+- analyze(log_line) returns: cluster_id, template, is_new_pattern, change_type
+- S3 periodic snapshots of Drain3 state (configurable, default: daily)
+- Known-good baseline tagging after confirmed healthy period
+- Automated weekly reset from latest known-good snapshot
+- Background log ingestion loop polling Loki every 30s
+
+Story Points: 5
+Estimate: 1 day
+Epic: AI RCA System (MVP)",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0008n:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,To Do,31/Mar/26 12:26 AM
+E2-01: Configure Grafana Alerting webhook — remove Alertmanager,SCRUM-67,10098,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:10 AM,09/Apr/26 11:57 AM,,10/Apr/26 12:00 AM,0,Alerting,,,,"As an on-call engineer, alerts from Grafana Alerting are routed exclusively through the AI triage pipeline so that no alert reaches me without AI evaluation.
+
+Acceptance Criteria:
+- Grafana Alerting enabled with single webhook contact point: http://<ai-vm>:8090/webhook/grafana
+- Alert rules migrated: high latency (p95 > 500ms/5m), high error rate (5xx > 5%/3m), service down (up == 0/2m), OTel span drop rate (> 1%)
+- No email, Slack, or PagerDuty contact points in Grafana
+- Alertmanager container removed from monitoring-compose.yml.j2
+- Alertmanager Ansible role references removed
+- Prometheus config alerting section removed
+- Manual alert trigger results in webhook POST to :8090 within 2 min
+- Webhook payload matches Grafana Alerting JSON format
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AI RCA System (MVP)
+Blocks: E2-06",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0006j:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10148,SCRUM-85,Epic 2 -- AI RCA System MVP,In Progress,06/Apr/26 12:26 PM
+"E1-05: End-to-end cloud validation — all services healthy, dashboards live",SCRUM-66,10097,Story,To Do,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,High,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:08 AM,09/Apr/26 11:09 AM,,16/Apr/26 12:00 AM,0,Validation,,,,"As a developer, I can open Grafana on the AWS monitoring VM and see all dashboards with live data so that the demo environment is validated. This is the Epic 1 completion gate.
+
+Acceptance Criteria:
+- Prometheus targets: all scrape targets UP
+- Grafana unified-overview dashboard: all panels populated
+- Loki returning logs from both services
+- Jaeger traces visible with spans from Kong to Spring Boot to MySQL
+- Ollama responding to inference queries within 30s
+- load-test.sh generates visible traffic in all three pillars
+- React frontend loads via CloudFront
+- API responds through Kong with 200
+- Spring Boot actuator metrics scraped through Kong
+
+Story Points: 3
+Estimate: 0.5 day
+Epic: AWS Demo Environment
+Milestone: Epic 1 complete",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0007b:,SCRUM Sprint 2,,3.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10147,SCRUM-84,Epic 1 -- AWS Infrastructure Provisioning and Configuration,To Do,31/Mar/26 12:26 AM
+E1-04: Ollama + NVIDIA drivers on GPU instance,SCRUM-65,10096,Story,In Review,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:09 AM,,,13/Apr/26 12:00 AM,0,GPU,"LLM,",,,"As a developer, I can query Ollama at http://<ai-vm>:11434 so that LLM inference is available for the triage service.
+
+Acceptance Criteria:
+- nvidia-smi shows Tesla T4 GPU with 16 GB VRAM
+- CUDA toolkit installed (nvcc --version returns version)
+- Ollama running as systemd service on port 11434
+- ollama list shows llama3.1:8b (Q4 quantized, <=5 GB)
+- curl localhost:11434/api/generate returns valid response within 30s
+- Ollama accessible from other VMs in private subnet
+- Ansible role ollama/ created for repeatable setup
+- GPU memory usage visible during inference (model on GPU, not CPU fallback)
+
+Story Points: 5
+Estimate: 1 day
+Epic: AWS Demo Environment
+Blocks: E2-07",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0006r:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10147,SCRUM-84,Epic 1 -- AWS Infrastructure Provisioning and Configuration,In Progress,31/Mar/26 11:21 AM
+"E1-03: Ansible deploy to AWS — Spring Boot, React, Kong, observability stack",SCRUM-64,10095,Story,In Review,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:09 AM,09/Apr/26 11:09 AM,,13/Apr/26 12:00 AM,0,Ansible,,,,"As an operator, I can run ansible-playbook playbooks/site.yml against the AWS instances so that the full observability stack deploys exactly as it does locally.
+
+Acceptance Criteria:
+- inventory/production.yml updated with Terraform output IPs and RDS endpoint
+- ansible-playbook playbooks/site.yml completes successfully (exit code 0, no failed tasks)
+- Spring Boot running on backend EC2 (port 80 to 8080), connected to RDS MySQL endpoint
+- React production build on S3 accessible via CloudFront URL
+- Kong routes: /api and /actuator to backend EC2, / to CloudFront
+- group_vars/all.yml endpoints updated to monitoring EC2 private IP
+- Prometheus targets page: all scrape targets UP
+- Grafana dashboards populated with live data
+- Loki receiving logs from Spring Boot and Kong
+- Jaeger showing traces for both services
+- curl http://<network-ec2>:8000/api returns 200
+
+Story Points: 5
+Estimate: 1 day
+Epic: AWS Demo Environment",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0006v:,SCRUM Sprint 2,,5.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10147,SCRUM-84,Epic 1 -- AWS Infrastructure Provisioning and Configuration,In Progress,31/Mar/26 10:03 AM
+"E1-02: Terraform — VPC, 3+1 EC2s, RDS, S3+CloudFront",SCRUM-63,10094,Story,In Review,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:17 AM,,,13/Apr/26 12:00 AM,0,"AWS,",Terraform,,,"As an operator, I can run terraform apply to provision the full AWS demo environment so that infrastructure is repeatable and version-controlled.
+
+Acceptance Criteria:
+- terraform apply completes without errors in us-east-1
+- VPC created with public subnet (CloudFront, NAT Gateway, bastion SSH) and private subnet (all EC2s, RDS)
+- Monitoring EC2: t3.large (2 vCPU, 8 GB RAM), 50 GB gp3 EBS, private subnet
+- Backend EC2: t3.small (2 vCPU, 2 GB RAM), 20 GB gp3 EBS, private subnet
+- Network EC2: t3.small (2 vCPU, 2 GB RAM), 20 GB gp3 EBS, private subnet
+- AI/LLM EC2: g4dn.xlarge (4 vCPU, 16 GB RAM, T4 GPU), 50 GB gp3 EBS, private subnet
+- RDS: db.t3.micro MySQL, single-AZ, 20 GB gp3, accessible only from sg-backend
+- S3 bucket with CloudFront distribution created
+- Security groups match spec: sg-monitoring, sg-backend, sg-network, sg-ai, sg-rds
+- Elastic IPs assigned to all EC2 instances
+- terraform output produces: all instance IPs, RDS endpoint, CloudFront domain, S3 bucket name
+- All resources tagged project:observability-rca
+- SSH access works via bastion using key pair from E1-01
+- terraform destroy cleanly removes all resources
+
+Story Points: 8
+Estimate: 1.5 days
+Epic: AWS Demo Environment
+Blocks: E1-03",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0006n:,SCRUM Sprint 2,,8.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10147,SCRUM-84,Epic 1 -- AWS Infrastructure Provisioning and Configuration,In Progress,09/Apr/26 11:17 AM
+"E1-01: AWS account, IAM, billing alerts, SSH keys",SCRUM-62,10093,Story,In Progress,SCRUM,Digital Factory Observability Service,software,Lina Laaraich,610c1cb7a539cb0068b06a40,Your first project,Highest,,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,Lina Laaraich,610c1cb7a539cb0068b06a40,31/Mar/26 12:26 AM,09/Apr/26 11:09 AM,,,15/Apr/26 12:00 AM,0,AWS,"Security,",,,"As a team member, I can authenticate to AWS with scoped IAM credentials so that I have least-privilege access.
+
+Acceptance Criteria:
+- AWS account created and accessible by all team members via IAM login URL
+- IAM users created per team member with MFA enforced and permissions scoped to EC2, RDS, S3, CloudFront, VPC, EBS (no AdministratorAccess)
+- CloudWatch billing alarms configured at $100, $200, $300 thresholds with SNS email notification to team lead
+- Tagging policy established: all resources tagged project:observability-rca
+- SSH key pairs generated (ed25519 or rsa-4096) and securely distributed — private keys never committed to git
+- Account root user secured with MFA and not used for daily operations
+
+Story Points: 2
+Estimate: 0.5 day
+Epic: AWS Demo Environment
+Blocks: all other E1 stories",,Lina Laaraich,610c1cb7a539cb0068b06a40,,,,,,,,,,,0|i0006f:,SCRUM Sprint 2,,2.0,6f3a0d39-46e6-4fe8-bd10-eaff50217004,Observability Interns,,10147,SCRUM-84,Epic 1 -- AWS Infrastructure Provisioning and Configuration,In Progress,03/Apr/26 2:14 PM
