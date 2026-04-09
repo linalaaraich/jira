@@ -100,28 +100,6 @@ items.append(row(
     ),
 ))
 
-# ---- E3-00 ----
-items.append(row(
-    summary="E3-00: Team K8s onboarding — Phases 1-4 of the Kubernetes guide on k3d",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC3_SUMMARY,
-    labels="Kubernetes",
-    description=(
-        "As a developer working on the Kubernetes migration, I need hands-on familiarity with "
-        "K8s primitives so that I can build Epic 3 stories without conceptual misunderstandings.\n\n"
-        "Acceptance Criteria:\n"
-        "- Each contributor brings up a local k3d cluster\n"
-        "- Walks through Phases 1-4 of the Kubernetes guide:\n"
-        "  Phase 1: deploy nginx, port-forward, watch self-healing\n"
-        "  Phase 2: ConfigMap, Secret, PVC, namespaces, Job, DaemonSet\n"
-        "  Phase 3: DNS resolution, Service vs Pod IPs, NetworkPolicy\n"
-        "  Phase 4: install kube-prometheus-stack via Helm, override values\n"
-        "- 30-min pair walkthrough with a teammate to demonstrate understanding\n"
-        "- Reference: https://github.com/linalaaraich/monitoring-docs/blob/main/kubernetes-guide.html\n\n"
-        "Blocks: ALL other E3 stories"
-    ),
-))
-
 # ---- E3-01 ----
 items.append(row(
     summary="E3-01: Bootstrap k3s on EC2 via Ansible — xanmanning.k3s, pinned, Traefik disabled",
@@ -141,7 +119,7 @@ items.append(row(
         "- New inventory group k3s_cluster wired into site.yml\n"
         "- Verification: kubectl get nodes returns 1 Ready node from the control machine\n\n"
         "Blocks: E3-03 through E3-10\n"
-        "Blocked by: E3-00, SCRUM-63 (rescoped Terraform)"
+        "Blocked by: SCRUM-63 (rescoped Terraform)"
     ),
 ))
 
@@ -169,7 +147,7 @@ items.append(row(
         "- Verification: helm install of AI stack succeeds without ImagePullBackOff\n"
         "- README documents build+import flow and the upgrade path to ECR+CI when multi-node is needed\n\n"
         "Blocks: E3-05\n"
-        "Blocked by: E3-00, E3-01"
+        "Blocked by: E3-01"
     ),
 ))
 
@@ -483,4 +461,4 @@ with open(out_path, "w", newline="", encoding="utf-8") as f:
 print(f"Wrote {len(items)} rows to {out_path}")
 print(f"  Columns: {len(HEADERS)} (was 56)")
 print(f"  Epics: 2  Stories: {len(items) - 2}")
-print(f"  Total story points: K8s={3+3+3+3+3+5+5+3+3+3+3} AI={3+2+3} -> {37+8} new points")
+print(f"  Total story points: K8s={3+3+3+3+5+5+3+3+3+3} AI={3+2+3} -> {34+8} new points")

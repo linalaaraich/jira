@@ -2,12 +2,14 @@
 
 This is a human-readable view of everything in `Jira-additions.csv`. Read this **before importing** to confirm scope, descriptions, and acceptance criteria. If something looks wrong, edit it in `generate_additions.py` and re-run before import — that's faster than fixing it in Jira after.
 
-**Total: 2 epics, 14 stories, 45 story points**
+**Total: 2 epics, 13 stories, 42 story points**
 
 | | Count | Points |
 |---|---|---|
-| Epic 3 — K8s Migration | 11 stories | 37 |
+| Epic 3 — K8s Migration | 10 stories | 34 |
 | Epic 4 — AI Triage Hardening | 3 stories | 8 |
+
+> **Note:** Team K8s onboarding (working through Phases 1-4 of the Kubernetes guide on a k3d cluster) is **not tracked as a story** — it's a verbal expectation before anyone touches Epic 3 work. Reference: <https://github.com/linalaaraich/monitoring-docs/blob/main/kubernetes-guide.html>
 
 **Sprint:** SCRUM Sprint 2 (extended) · **Due date:** 23/Apr/26 · **Status (all):** To Do
 
@@ -36,25 +38,6 @@ Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama
 
 ---
 
-## E3-00: Team K8s onboarding — Phases 1-4 of the Kubernetes guide on k3d
-**Priority:** Highest · **Points:** 3 · **Labels:** Kubernetes
-
-> As a developer working on the Kubernetes migration, I need hands-on familiarity with K8s primitives so that I can build Epic 3 stories without conceptual misunderstandings.
-
-**Acceptance Criteria:**
-- Each contributor brings up a local k3d cluster
-- Walks through Phases 1-4 of the Kubernetes guide:
-  - Phase 1: deploy nginx, port-forward, watch self-healing
-  - Phase 2: ConfigMap, Secret, PVC, namespaces, Job, DaemonSet
-  - Phase 3: DNS resolution, Service vs Pod IPs, NetworkPolicy
-  - Phase 4: install kube-prometheus-stack via Helm, override values
-- 30-min pair walkthrough with a teammate to demonstrate understanding
-- Reference: https://github.com/linalaaraich/monitoring-docs/blob/main/kubernetes-guide.html
-
-**Blocks:** ALL other E3 stories
-
----
-
 ## E3-01: Bootstrap k3s on EC2 via Ansible
 **Priority:** Highest · **Points:** 3 · **Labels:** Kubernetes
 
@@ -71,7 +54,7 @@ Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama
 - Verification: `kubectl get nodes` returns 1 Ready node from the control machine
 
 **Blocks:** E3-03 → E3-10
-**Blocked by:** E3-00, SCRUM-63 (rescoped Terraform)
+**Blocked by:** SCRUM-63 (rescoped Terraform)
 
 ---
 
@@ -95,7 +78,7 @@ Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama
 - README documents build+import flow and the upgrade path to ECR+CI when multi-node is needed
 
 **Blocks:** E3-05
-**Blocked by:** E3-00, E3-01
+**Blocked by:** E3-01
 
 ---
 
@@ -363,9 +346,7 @@ Targeted reliability and observability improvements to the AI triage pipeline be
 # Critical path
 
 ```
-E3-00 (learning) ──────► blocks ALL E3 work
-                             │
-SCRUM-63 (Terraform rescope) ┴─► E3-01 (k3s) ──┬─► E3-06 (NVIDIA spike)
+SCRUM-63 (Terraform rescope) ──► E3-01 (k3s) ──┬─► E3-06 (NVIDIA spike)
                                                 │
                                 E3-02 (images) ─┤
                                                 │
@@ -386,7 +367,7 @@ AI-01, AI-02, AI-03 ──► independent of K8s, can run anytime in parallel
                         easier to test once E3-10 is green
 ```
 
-**Spine:** E3-00 → E3-01 → E3-02 → (E3-03/04/05 in parallel with E3-06) → (E3-07/08/09 in parallel) → E3-10
+**Spine:** E3-01 → E3-02 → (E3-03/04/05 in parallel with E3-06) → (E3-07/08/09 in parallel) → E3-10
 
 ---
 
@@ -395,11 +376,11 @@ AI-01, AI-02, AI-03 ──► independent of K8s, can run anytime in parallel
 | | Count |
 |---|---|
 | Existing in-flight stories | ~11 still need finishing (of 20 total) |
-| New K8s stories | 11 (37 points) |
+| New K8s stories | 10 (34 points) |
 | New AI stories | 3 (8 points) |
 | Existing stories rescoped | 3 (SCRUM-63, 64, 65 — see README) |
 | Existing stories closed as superseded | 2 (SCRUM-66, 82 — see README) |
-| **Total to ship by Apr 23** | **~25 stories, ~115 points** |
+| **Total to ship by Apr 23** | **~24 stories, ~112 points** |
 
 ---
 
