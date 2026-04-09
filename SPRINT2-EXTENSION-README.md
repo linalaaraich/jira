@@ -15,26 +15,41 @@ This README accompanies `Jira-additions.csv` and covers the changes that **canno
 
 ## Step 1 — Import the new CSV
 
-The CSV contains 15 items in 12 clean columns. All items go into `SCRUM Sprint 2` with status `To Do`.
+The CSV contains 15 items in 13 columns. All items go into `SCRUM Sprint 2` with status `To Do`.
 
 | Type | Count |
 |---|---|
 | Epic | 2 (Epic 3 K8s Migration, Epic 4 AI Hardening) |
 | Story | 13 (E3-01 → E3-10, AI-01 → AI-03) |
 
-**The 12 columns:**
-`Summary`, `Issue Type`, `Status`, `Priority`, `Labels`, `Description`, `Sprint`, `Story Points`, `Parent`, `Reporter`, `Assignee`, `Due date`
+**The 13 columns** (matched to Jira's import requirements for child-parent linkage):
+
+| # | Column | Maps to | Notes |
+|---|---|---|---|
+| 1 | `Work item Id` | Work item Id | Internal ID used to resolve parent links within this CSV (`EPIC3`, `E3-01`, …, `EPIC4`, `AI-01`, …) |
+| 2 | `Summary` | Summary | |
+| 3 | `Work type` | Work type | `Epic` or `Story` |
+| 4 | `Status` | Status | All `To Do` |
+| 5 | `Priority` | Priority | |
+| 6 | `Labels` | Labels | |
+| 7 | `Description` | Description | |
+| 8 | `Sprint` | Sprint | All `SCRUM Sprint 2` |
+| 9 | `Story Points` | Custom field (Story point estimate) | |
+| 10 | `Parent` | Parent | References the parent epic's `Work item Id` (`EPIC3` or `EPIC4`), not its Summary |
+| 11 | `Reporter` | Reporter | |
+| 12 | `Assignee` | Assignee | Empty for epics |
+| 13 | `Due date` | Due date | |
 
 **Jira import path:**
 1. Project Settings → System → External system import → CSV
 2. Upload `Jira-additions.csv`
 3. Select the SCRUM project as the target
-4. Field mapping: each of the 12 columns maps directly to its Jira field of the same name. The only one Jira may not auto-detect is `Story Points` — map it to `Custom field (Story point estimate)`. The `Parent` column contains the epic's Summary, which Jira should resolve automatically.
-5. Run the dry-run preview, confirm 15 items, commit.
+4. Field mapping: each column should auto-map to its Jira field. The 3 columns Jira specifically asks about for child-parent relationships are all present: `Work item Id`, `Work type`, and `Parent`.
+5. Run the dry-run preview, confirm 15 items and that the 13 stories show their parent epic, commit.
 
-**If parent links don't resolve on import** (some Jira versions need the epics to exist first):
-- Filter the CSV to just the 2 Epic rows, import those first
-- Then import the 14 Story rows — Jira will find the epics by Summary and link them
+**If parent links still don't resolve** (rare):
+- Filter the CSV to just the 2 Epic rows (`EPIC3` and `EPIC4`), import those first
+- Then import the 13 Story rows — Jira will find the epics already in the project and link by `Work item Id`
 
 ---
 

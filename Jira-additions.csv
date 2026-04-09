@@ -1,5 +1,5 @@
-Summary,Issue Type,Status,Priority,Labels,Description,Sprint,Story Points,Parent,Reporter,Assignee,Due date
-Epic 3 -- Kubernetes Migration of Monitored Target,Epic,To Do,High,Kubernetes,"Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama) from per-VM docker-compose to a single-node k3s cluster on EC2. The monitoring stack (Prometheus, Grafana, Loki, Jaeger) stays on its own VM and reaches into the cluster via kubernetes_sd_configs and an in-cluster OTel Collector DaemonSet.
+Work item Id,Summary,Work type,Status,Priority,Labels,Description,Sprint,Story Points,Parent,Reporter,Assignee,Due date
+EPIC3,Epic 3 -- Kubernetes Migration of Monitored Target,Epic,To Do,High,Kubernetes,"Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama) from per-VM docker-compose to a single-node k3s cluster on EC2. The monitoring stack (Prometheus, Grafana, Loki, Jaeger) stays on its own VM and reaches into the cluster via kubernetes_sd_configs and an in-cluster OTel Collector DaemonSet.
 
 Goals:
 - Single-node k3s cluster on EC2 (HA deferred)
@@ -15,7 +15,7 @@ Out of scope (sprint 3+):
 - Calico / Cilium for NetworkPolicy enforcement
 - Longhorn for distributed storage
 - Migrating the monitoring stack itself to K8s (deliberately rejected)",SCRUM Sprint 2,,,Lina Laaraich,,23/Apr/26
-"E3-01: Bootstrap k3s on EC2 via Ansible — xanmanning.k3s, pinned, Traefik disabled",Story,To Do,Highest,Kubernetes,"As a platform engineer, I need a single-node k3s cluster running on EC2 so that the Helm-deployed workloads have somewhere to run.
+E3-01,"E3-01: Bootstrap k3s on EC2 via Ansible — xanmanning.k3s, pinned, Traefik disabled",Story,To Do,Highest,Kubernetes,"As a platform engineer, I need a single-node k3s cluster running on EC2 so that the Helm-deployed workloads have somewhere to run.
 
 Acceptance Criteria:
 - xanmanning.k3s role added to requirements.yml, version v3.4.4 pinned
@@ -28,8 +28,8 @@ Acceptance Criteria:
 - Verification: kubectl get nodes returns 1 Ready node from the control machine
 
 Blocks: E3-03 through E3-10
-Blocked by: SCRUM-63 (rescoped Terraform)",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-"E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",Story,To Do,Highest,Kubernetes,"As a platform engineer, I need first-party container images (triage service + 5 MCP servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can run them without a registry.
+Blocked by: SCRUM-63 (rescoped Terraform)",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-02,"E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",Story,To Do,Highest,Kubernetes,"As a platform engineer, I need first-party container images (triage service + 5 MCP servers) loaded into the k3s host's containerd cache so that Helm-deployed pods can run them without a registry.
 
 Why no registry/CI: single-node k3s with one or two contributors. ECR + GitHub Actions adds operational surface area we don't need. k3s containerd lets us import tarballs directly.
 
@@ -46,8 +46,8 @@ Acceptance Criteria:
 - README documents build+import flow and the upgrade path to ECR+CI when multi-node is needed
 
 Blocks: E3-05
-Blocked by: E3-01",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes),Story,To Do,High,Kubernetes,"As a developer, I need a Helm chart that deploys the Spring Boot backend into k3s so that the application is reachable from Kong and can talk to RDS.
+Blocked by: E3-01",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-03,E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes),Story,To Do,High,Kubernetes,"As a developer, I need a Helm chart that deploys the Spring Boot backend into k3s so that the application is reachable from Kong and can talk to RDS.
 
 Acceptance Criteria:
 - New chart at charts/spring-boot/ with Chart.yaml, values.yaml, templates/
@@ -63,8 +63,8 @@ Acceptance Criteria:
 - Spring Boot logs include trace_id (OTel agent injected)
 
 Blocks: E3-09, E3-10
-Blocked by: E3-01",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-"E3-04: Helm chart — Kong via upstream chart, DB-less mode, kong.yml as ConfigMap",Story,To Do,High,Kubernetes,"As a platform engineer, I need Kong running inside the cluster as the API gateway.
+Blocked by: E3-01",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-04,"E3-04: Helm chart — Kong via upstream chart, DB-less mode, kong.yml as ConfigMap",Story,To Do,High,Kubernetes,"As a platform engineer, I need Kong running inside the cluster as the API gateway.
 
 Acceptance Criteria:
 - Upstream kong/kong Helm chart, chart_version pinned (e.g. 2.38.0)
@@ -78,8 +78,8 @@ Acceptance Criteria:
 - Verification: curl through Kong reaches Spring Boot, traces appear in Jaeger
 
 Blocks: E3-09, E3-10
-Blocked by: E3-01, E3-03",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-05: Helm chart — AI stack (triage service + 5 MCP servers + Ollama),Story,To Do,High,Kubernetes,"As an SRE, I need the entire AI RCA pipeline deployed via a single Helm chart so triage, MCP servers, and Ollama share a lifecycle and can roll back together.
+Blocked by: E3-01, E3-03",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-05,E3-05: Helm chart — AI stack (triage service + 5 MCP servers + Ollama),Story,To Do,High,Kubernetes,"As an SRE, I need the entire AI RCA pipeline deployed via a single Helm chart so triage, MCP servers, and Ollama share a lifecycle and can roll back together.
 
 Acceptance Criteria:
 - New chart at charts/ai-stack/ containing:
@@ -96,8 +96,8 @@ Acceptance Criteria:
 - Verification: triage /health responds, MCP servers respond, Ollama returns model list
 
 Blocks: E3-09, E3-10
-Blocked by: E3-01, E3-02, E3-06",SCRUM Sprint 2,5,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-06: NVIDIA device plugin DaemonSet + Ollama GPU verification spike,Story,To Do,Highest,Kubernetes,"As a platform engineer, I need to verify GPU passthrough on k3s so Ollama can use the GPU. This is a spike — plan for fiddly debugging.
+Blocked by: E3-01, E3-02, E3-06",SCRUM Sprint 2,5,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-06,E3-06: NVIDIA device plugin DaemonSet + Ollama GPU verification spike,Story,To Do,Highest,Kubernetes,"As a platform engineer, I need to verify GPU passthrough on k3s so Ollama can use the GPU. This is a spike — plan for fiddly debugging.
 
 Acceptance Criteria:
 - NVIDIA Container Toolkit installed on the k3s host (via repurposed nvidia_docker role)
@@ -109,8 +109,8 @@ Acceptance Criteria:
 - If separate: node tainted, Ollama pod has matching toleration
 
 Blocks: E3-05
-Blocked by: E3-01",SCRUM Sprint 2,5,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-07: In-cluster OTel Collector DaemonSet — log/trace forwarding to monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need an OTel Collector running on every K8s node so container logs and traces are enriched with K8s metadata and forwarded to the monitoring VM.
+Blocked by: E3-01",SCRUM Sprint 2,5,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-07,E3-07: In-cluster OTel Collector DaemonSet — log/trace forwarding to monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need an OTel Collector running on every K8s node so container logs and traces are enriched with K8s metadata and forwarded to the monitoring VM.
 
 Acceptance Criteria:
 - New manifest set or chart deploys:
@@ -127,8 +127,8 @@ Acceptance Criteria:
 - Verification: trace from Spring Boot or Kong appears in Jaeger
 
 Blocks: E3-10
-Blocked by: E3-01, E3-03, E3-04, E3-05",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-08: Prometheus kubernetes_sd_configs scrape job + RBAC for monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need the existing external Prometheus to discover and scrape K8s-hosted services so all metrics keep flowing to the same datastore.
+Blocked by: E3-01, E3-03, E3-04, E3-05",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-08,E3-08: Prometheus kubernetes_sd_configs scrape job + RBAC for monitoring VM,Story,To Do,High,Kubernetes,"As an observability engineer, I need the existing external Prometheus to discover and scrape K8s-hosted services so all metrics keep flowing to the same datastore.
 
 Acceptance Criteria:
 - New ServiceAccount prometheus-scraper in namespace observability
@@ -144,8 +144,8 @@ Acceptance Criteria:
 - Verification: Prometheus targets page shows healthy K8s targets
 
 Blocks: E3-09, E3-10
-Blocked by: E3-01, SCRUM-63 (security group update)",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-09: Migrate the 17 Grafana alert rules to K8s pod-based label selectors,Story,To Do,Highest,Kubernetes,"As an SRE, I need every Grafana alert rule's selector updated to match the K8s-hosted target so alerts continue to fire correctly. High-risk: silent failure if missed.
+Blocked by: E3-01, SCRUM-63 (security group update)",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-09,E3-09: Migrate the 17 Grafana alert rules to K8s pod-based label selectors,Story,To Do,Highest,Kubernetes,"As an SRE, I need every Grafana alert rule's selector updated to match the K8s-hosted target so alerts continue to fire correctly. High-risk: silent failure if missed.
 
 Acceptance Criteria:
 - Audit current Grafana alerting: 17 rules in 3 groups (per CLAUDE.md)
@@ -159,8 +159,8 @@ Acceptance Criteria:
 - No rule left with a stale selector
 
 Blocks: E3-10
-Blocked by: E3-03, E3-04, E3-05, E3-08",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-E3-10: End-to-end K8s validation playbook — full pipeline against K8s target,Story,To Do,Highest,Kubernetes,"As an SRE, I need an automated end-to-end test against the K8s target so the migration is provably complete.
+Blocked by: E3-03, E3-04, E3-05, E3-08",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+E3-10,E3-10: End-to-end K8s validation playbook — full pipeline against K8s target,Story,To Do,Highest,Kubernetes,"As an SRE, I need an automated end-to-end test against the K8s target so the migration is provably complete.
 
 Acceptance Criteria:
 - New playbook playbooks/integration-k8s.yml (or update existing integration.yml)
@@ -178,14 +178,14 @@ Acceptance Criteria:
 - All checks scripted, exit code 0 = pass
 - Replaces SCRUM-66 (E1-05) — that ticket closes in favor of this one
 
-Blocked by: E3-03, E3-04, E3-05, E3-06, E3-07, E3-08, E3-09",SCRUM Sprint 2,3,Epic 3 -- Kubernetes Migration of Monitored Target,Lina Laaraich,Lina Laaraich,23/Apr/26
-Epic 4 -- AI Triage Service Hardening,Epic,To Do,Medium,AI,"Targeted reliability and observability improvements to the AI triage pipeline beyond the MVP. Three high-leverage stories covering the most impactful weaknesses identified after Epic 2. Larger AI maturity work (calibration sets, prompt engineering, model A/B testing) is deferred to a future sprint.
+Blocked by: E3-03, E3-04, E3-05, E3-06, E3-07, E3-08, E3-09",SCRUM Sprint 2,3,EPIC3,Lina Laaraich,Lina Laaraich,23/Apr/26
+EPIC4,Epic 4 -- AI Triage Service Hardening,Epic,To Do,Medium,AI,"Targeted reliability and observability improvements to the AI triage pipeline beyond the MVP. Three high-leverage stories covering the most impactful weaknesses identified after Epic 2. Larger AI maturity work (calibration sets, prompt engineering, model A/B testing) is deferred to a future sprint.
 
 Goals:
 - Eliminate Ollama-related pipeline hangs
 - Replace fragile free-text parsing with strict JSON schema enforcement
 - Add self-observability so future iteration is data-driven",SCRUM Sprint 2,,,Lina Laaraich,,23/Apr/26
-"AI-01: Ollama call hardening — timeout, retry, circuit breaker, fallback",Story,To Do,Highest,AI,"As an SRE, I need the triage service's Ollama calls to be resilient to timeouts and failures so a slow or hung Ollama doesn't stall the pipeline.
+AI-01,"AI-01: Ollama call hardening — timeout, retry, circuit breaker, fallback",Story,To Do,Highest,AI,"As an SRE, I need the triage service's Ollama calls to be resilient to timeouts and failures so a slow or hung Ollama doesn't stall the pipeline.
 
 Acceptance Criteria:
 - Configurable per-request timeout (default 30s, override via env var)
@@ -194,8 +194,8 @@ Acceptance Criteria:
 - Fallback: when circuit open or retries exhausted, produce 'NEEDS_HUMAN_REVIEW' verdict with raw alert context, sent via existing escalation email path
 - Metrics: ollama_request_duration_seconds, ollama_request_total{status}, ollama_circuit_state
 - Unit tests for timeout, retry, circuit breaker open/close transitions
-- Manual test: kill Ollama mid-request, verify pipeline produces fallback within timeout + retry budget",SCRUM Sprint 2,3,Epic 4 -- AI Triage Service Hardening,Lina Laaraich,Lina Laaraich,23/Apr/26
-AI-02: JSON schema enforcement on LLM verdict — Ollama JSON mode + Pydantic validator,Story,To Do,Highest,AI,"As an SRE, I need the LLM verdict to be structured JSON validated against a strict schema so triage can reliably parse it without fragile string matching.
+- Manual test: kill Ollama mid-request, verify pipeline produces fallback within timeout + retry budget",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
+AI-02,AI-02: JSON schema enforcement on LLM verdict — Ollama JSON mode + Pydantic validator,Story,To Do,Highest,AI,"As an SRE, I need the LLM verdict to be structured JSON validated against a strict schema so triage can reliably parse it without fragile string matching.
 
 Acceptance Criteria:
 - Ollama API call uses 'format: json' parameter (Ollama JSON mode)
@@ -211,8 +211,8 @@ Acceptance Criteria:
 - On second failure, escalate to NEEDS_HUMAN_REVIEW (uses fallback path from AI-01)
 - Existing free-text 'ESCALATE/DISMISS' parser removed
 - Unit tests for valid response, schema failure, retry recovery, double failure
-- Schema documented in monitoring-docs",SCRUM Sprint 2,2,Epic 4 -- AI Triage Service Hardening,Lina Laaraich,Lina Laaraich,23/Apr/26
-"AI-03: Triage service self-observability — /metrics with queue depth, latency, error rates",Story,To Do,High,AI,"As an SRE, I need the triage service to expose its own operational metrics so I can observe and improve its behavior.
+- Schema documented in monitoring-docs",SCRUM Sprint 2,2,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26
+AI-03,"AI-03: Triage service self-observability — /metrics with queue depth, latency, error rates",Story,To Do,High,AI,"As an SRE, I need the triage service to expose its own operational metrics so I can observe and improve its behavior.
 
 Acceptance Criteria:
 - Triage service exposes /metrics in Prometheus format
@@ -230,4 +230,4 @@ Acceptance Criteria:
 - New Grafana panel 'Triage Service Health' added to unified-overview:
   - Decision throughput, latency p50/p95/p99, verdict breakdown, MCP error rates, fallback rate
 - Dashboard JSON committed to git
-- Verification: test alert produces visible metric updates within 30s",SCRUM Sprint 2,3,Epic 4 -- AI Triage Service Hardening,Lina Laaraich,Lina Laaraich,23/Apr/26
+- Verification: test alert produces visible metric updates within 30s",SCRUM Sprint 2,3,EPIC4,Lina Laaraich,Lina Laaraich,23/Apr/26

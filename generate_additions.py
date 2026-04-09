@@ -4,24 +4,26 @@ Generate a clean Jira-import CSV for the sprint 2 extension.
 
 Output: Jira-additions.csv
 
-Only 12 columns — the minimum Jira CSV import needs. No Jira export artifacts,
-no duplicated Labels columns, no Team Id / Custom field (Vulnerability) / Σ fields.
+13 columns matched to Jira's import requirements. Uses 'Work item Id' and
+'Work type' (Jira's current terminology) and links children to parents via
+Work item Id, not Summary.
 
 Columns:
-  1. Summary
-  2. Issue Type
-  3. Status
-  4. Priority
-  5. Labels
-  6. Description
-  7. Sprint
-  8. Story Points
-  9. Parent (epic key for stories, blank for epics)
- 10. Reporter
- 11. Assignee
- 12. Due date
+  1. Work item Id (unique within this CSV; used for parent linkage)
+  2. Summary
+  3. Work type
+  4. Status
+  5. Priority
+  6. Labels
+  7. Description
+  8. Sprint
+  9. Story Points
+ 10. Parent (the parent epic's Work item Id)
+ 11. Reporter
+ 12. Assignee
+ 13. Due date
 
-16 rows total: 2 epics + 11 K8s stories + 3 AI stories.
+15 rows total: 2 epics + 10 K8s stories + 3 AI stories.
 """
 
 import csv
@@ -30,9 +32,15 @@ USER = "Lina Laaraich"
 SPRINT_NAME = "SCRUM Sprint 2"
 SPRINT_DUE = "23/Apr/26"
 
+# Stable IDs used inside the CSV for parent linkage. Jira will assign its own
+# real keys on import; these are just for resolving parent-child within the file.
+EPIC3_ID = "EPIC3"
+EPIC4_ID = "EPIC4"
+
 HEADERS = [
+    "Work item Id",
     "Summary",
-    "Issue Type",
+    "Work type",
     "Status",
     "Priority",
     "Labels",
@@ -46,12 +54,13 @@ HEADERS = [
 ]
 
 
-def row(*, summary, issue_type, priority, description,
+def row(*, work_id, summary, work_type, priority, description,
         labels="", story_points="", parent="", due_date=SPRINT_DUE):
-    """Build a 12-column row."""
+    """Build a 13-column row."""
     return [
+        work_id,
         summary,
-        issue_type,
+        work_type,
         "To Do",
         priority,
         labels,
@@ -60,7 +69,7 @@ def row(*, summary, issue_type, priority, description,
         str(story_points) if story_points else "",
         parent,
         USER,
-        USER if issue_type != "Epic" else "",
+        USER if work_type != "Epic" else "",
         due_date,
     ]
 
@@ -76,8 +85,9 @@ items = []
 
 # ---- Epic 3 ----
 items.append(row(
+    work_id=EPIC3_ID,
     summary=EPIC3_SUMMARY,
-    issue_type="Epic", priority="High",
+    work_type="Epic", priority="High",
     labels="Kubernetes",
     description=(
         "Migrate the monitored infrastructure (Spring Boot, Kong, AI RCA pipeline, Ollama) "
@@ -102,9 +112,10 @@ items.append(row(
 
 # ---- E3-01 ----
 items.append(row(
+    work_id="E3-01",
     summary="E3-01: Bootstrap k3s on EC2 via Ansible — xanmanning.k3s, pinned, Traefik disabled",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="Highest", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As a platform engineer, I need a single-node k3s cluster running on EC2 so that the "
@@ -125,9 +136,10 @@ items.append(row(
 
 # ---- E3-02 ----
 items.append(row(
+    work_id="E3-02",
     summary="E3-02: Image build + k3s containerd import via Ansible (no registry, no CI)",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="Highest", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As a platform engineer, I need first-party container images (triage service + 5 MCP "
@@ -153,9 +165,10 @@ items.append(row(
 
 # ---- E3-03 ----
 items.append(row(
+    work_id="E3-03",
     summary="E3-03: Helm chart — Spring Boot backend (Deployment + Service + ConfigMap + probes)",
-    issue_type="Story", priority="High", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="High", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As a developer, I need a Helm chart that deploys the Spring Boot backend into k3s "
@@ -179,9 +192,10 @@ items.append(row(
 
 # ---- E3-04 ----
 items.append(row(
+    work_id="E3-04",
     summary="E3-04: Helm chart — Kong via upstream chart, DB-less mode, kong.yml as ConfigMap",
-    issue_type="Story", priority="High", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="High", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As a platform engineer, I need Kong running inside the cluster as the API gateway.\n\n"
@@ -202,9 +216,10 @@ items.append(row(
 
 # ---- E3-05 ----
 items.append(row(
+    work_id="E3-05",
     summary="E3-05: Helm chart — AI stack (triage service + 5 MCP servers + Ollama)",
-    issue_type="Story", priority="High", story_points=5,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="High", story_points=5,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As an SRE, I need the entire AI RCA pipeline deployed via a single Helm chart so "
@@ -229,9 +244,10 @@ items.append(row(
 
 # ---- E3-06 ----
 items.append(row(
+    work_id="E3-06",
     summary="E3-06: NVIDIA device plugin DaemonSet + Ollama GPU verification spike",
-    issue_type="Story", priority="Highest", story_points=5,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="Highest", story_points=5,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As a platform engineer, I need to verify GPU passthrough on k3s so Ollama can use the GPU. "
@@ -251,9 +267,10 @@ items.append(row(
 
 # ---- E3-07 ----
 items.append(row(
+    work_id="E3-07",
     summary="E3-07: In-cluster OTel Collector DaemonSet — log/trace forwarding to monitoring VM",
-    issue_type="Story", priority="High", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="High", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As an observability engineer, I need an OTel Collector running on every K8s node so "
@@ -278,9 +295,10 @@ items.append(row(
 
 # ---- E3-08 ----
 items.append(row(
+    work_id="E3-08",
     summary="E3-08: Prometheus kubernetes_sd_configs scrape job + RBAC for monitoring VM",
-    issue_type="Story", priority="High", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="High", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As an observability engineer, I need the existing external Prometheus to discover and "
@@ -304,9 +322,10 @@ items.append(row(
 
 # ---- E3-09 ----
 items.append(row(
+    work_id="E3-09",
     summary="E3-09: Migrate the 17 Grafana alert rules to K8s pod-based label selectors",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="Highest", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As an SRE, I need every Grafana alert rule's selector updated to match the K8s-hosted "
@@ -328,9 +347,10 @@ items.append(row(
 
 # ---- E3-10 ----
 items.append(row(
+    work_id="E3-10",
     summary="E3-10: End-to-end K8s validation playbook — full pipeline against K8s target",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC3_SUMMARY,
+    work_type="Story", priority="Highest", story_points=3,
+    parent=EPIC3_ID,
     labels="Kubernetes",
     description=(
         "As an SRE, I need an automated end-to-end test against the K8s target so the migration "
@@ -356,8 +376,9 @@ items.append(row(
 
 # ---- Epic 4 ----
 items.append(row(
+    work_id=EPIC4_ID,
     summary=EPIC4_SUMMARY,
-    issue_type="Epic", priority="Medium",
+    work_type="Epic", priority="Medium",
     labels="AI",
     description=(
         "Targeted reliability and observability improvements to the AI triage pipeline beyond "
@@ -373,9 +394,10 @@ items.append(row(
 
 # ---- AI-01 ----
 items.append(row(
+    work_id="AI-01",
     summary="AI-01: Ollama call hardening — timeout, retry, circuit breaker, fallback",
-    issue_type="Story", priority="Highest", story_points=3,
-    parent=EPIC4_SUMMARY,
+    work_type="Story", priority="Highest", story_points=3,
+    parent=EPIC4_ID,
     labels="AI",
     description=(
         "As an SRE, I need the triage service's Ollama calls to be resilient to timeouts and "
@@ -394,9 +416,10 @@ items.append(row(
 
 # ---- AI-02 ----
 items.append(row(
+    work_id="AI-02",
     summary="AI-02: JSON schema enforcement on LLM verdict — Ollama JSON mode + Pydantic validator",
-    issue_type="Story", priority="Highest", story_points=2,
-    parent=EPIC4_SUMMARY,
+    work_type="Story", priority="Highest", story_points=2,
+    parent=EPIC4_ID,
     labels="AI",
     description=(
         "As an SRE, I need the LLM verdict to be structured JSON validated against a strict schema "
@@ -421,9 +444,10 @@ items.append(row(
 
 # ---- AI-03 ----
 items.append(row(
+    work_id="AI-03",
     summary="AI-03: Triage service self-observability — /metrics with queue depth, latency, error rates",
-    issue_type="Story", priority="High", story_points=3,
-    parent=EPIC4_SUMMARY,
+    work_type="Story", priority="High", story_points=3,
+    parent=EPIC4_ID,
     labels="AI",
     description=(
         "As an SRE, I need the triage service to expose its own operational metrics so I can "
@@ -459,6 +483,7 @@ with open(out_path, "w", newline="", encoding="utf-8") as f:
         w.writerow(item)
 
 print(f"Wrote {len(items)} rows to {out_path}")
-print(f"  Columns: {len(HEADERS)} (was 56)")
+print(f"  Columns: {len(HEADERS)}")
 print(f"  Epics: 2  Stories: {len(items) - 2}")
 print(f"  Total story points: K8s={3+3+3+3+5+5+3+3+3+3} AI={3+2+3} -> {34+8} new points")
+print(f"  Parent linkage: stories reference epic by Work item Id ({EPIC3_ID}, {EPIC4_ID})")
