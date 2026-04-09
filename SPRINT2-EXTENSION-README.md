@@ -13,28 +13,26 @@ This README accompanies `Jira-additions.csv` and covers the changes that **canno
 
 ## Step 1 — Import the new CSV
 
-The CSV contains 16 items, all in Sprint `SCRUM Sprint 2`, all with status `To Do`.
+The CSV contains 16 items in 12 clean columns. All items go into `SCRUM Sprint 2` with status `To Do`.
 
-| Type | Count | Items |
-|---|---|---|
-| Epic | 2 | SCRUM-86 (Epic 3 — K8s Migration), SCRUM-98 (Epic 4 — AI Triage Service Hardening) |
-| Story | 14 | SCRUM-87 → SCRUM-97 (E3-00 → E3-10), SCRUM-99 → SCRUM-101 (AI-01 → AI-03) |
+| Type | Count |
+|---|---|
+| Epic | 2 (Epic 3 K8s Migration, Epic 4 AI Hardening) |
+| Story | 14 (E3-00 → E3-10, AI-01 → AI-03) |
+
+**The 12 columns:**
+`Summary`, `Issue Type`, `Status`, `Priority`, `Labels`, `Description`, `Sprint`, `Story Points`, `Parent`, `Reporter`, `Assignee`, `Due date`
 
 **Jira import path:**
-1. Project Settings → External Imports → CSV
+1. Project Settings → System → External system import → CSV
 2. Upload `Jira-additions.csv`
-3. **Map fields**: Jira should auto-detect most. Confirm:
-   - `Issue Type` → Issue Type
-   - `Parent` / `Parent key` → Epic Link (so stories attach to their epic)
-   - `Sprint` → Sprint (use the existing "SCRUM Sprint 2")
-   - `Custom field (Story point estimate)` → Story Points
-   - `Labels` (4 columns) → Labels (multi-value)
-4. **Important**: the CSV uses suggested SCRUM-86 through SCRUM-101 as Issue keys, but Jira will assign its own keys on import. This is fine — the parent linkage uses the `Parent` Issue ID columns which Jira import resolves.
-5. Run the import dry-run preview, confirm 16 items, then commit.
+3. Select the SCRUM project as the target
+4. Field mapping: each of the 12 columns maps directly to its Jira field of the same name. The only one Jira may not auto-detect is `Story Points` — map it to `Custom field (Story point estimate)`. The `Parent` column contains the epic's Summary, which Jira should resolve automatically.
+5. Run the dry-run preview, confirm 16 items, commit.
 
-**If parent links don't resolve on import** (some Jira versions don't honor Parent ID for cross-import links):
-- Import the 2 epics first by themselves
-- Then import the 14 stories — Jira will see the epics already exist and link by Parent key
+**If parent links don't resolve on import** (some Jira versions need the epics to exist first):
+- Filter the CSV to just the 2 Epic rows, import those first
+- Then import the 14 Story rows — Jira will find the epics by Summary and link them
 
 ---
 
