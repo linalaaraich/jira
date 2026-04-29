@@ -1,0 +1,549 @@
+Work item Id,Summary,Work type,Status,Priority,Labels,Description,Sprint,Story Points,Parent,Reporter,Assignee,Due date
+EPIC5,Epic 5 -- RCA Quality v2 (close-out),Epic,Done,High,RCA-Quality,"Backfill Sprint 3's epic record with the RCA-quality work shipped between 2026-04-23 and 2026-04-29. Most stories are already Done; this epic captures them under a single Sprint 3 banner so the historical record matches when work actually shipped.
+
+Goals:
+- Per-service Drain3 (dict[service -> TemplateMiner]) live for spring-boot, nginx, proxy, otel-agent-init
+- Closed-loop operator feedback (override/confirm) wired end-to-end
+- F-1..F-5 RCA prose hardening: Drain3 webhook enrichment, hallucination blocklist, F-4 confidence clamp, surface-only LEDE validator, retry-on-violations
+- 11-archetype exemplar library + suggested-actions philosophy rewrite (D17/D18/D19)
+- Pod-level alert rules (PodHighMemoryUsage, PodHighCpuUsage)
+- Chaos test harness with 4 test classes + RCA scorer
+- Daily audit pipelines (static + live) firing at 12:00 UTC
+- Audit repo migrations to private monitoring-audit-results
+
+Out of scope:
+- The 4 high-leverage stories that triggered this epic's existence (US-3.9 onwards) are tracked under EPIC8 (Hallucination firewall)",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
+EPIC6,Epic 6 -- Operator feedback loop,Epic,To Do,High,Feedback,"Capture per-decision operator feedback (thumbs up/down + structured tags + free-text correction) and expose it via MCP for future RCAs to learn from. Curated RAG retrieval (originally planned as US-3.3 + US-3.4) deferred to Sprint 4 since it depends on accumulated feedback volume.
+
+Goals:
+- Extend (do NOT replace) the existing US-5.3 feedback table with rating/tags/actual_root_cause/comment/rater columns
+- New POST /decisions/{id}/feedback endpoint
+- Minimal vanilla-JS rating UI at /static/rate.html with email + dashboard integration
+- 4 read-only MCP tools on rca_history_mcp: get_feedback_stats, get_high_rated_examples, get_similar_decisions(min_quality), get_low_rated_examples_for_alert
+- Prometheus metrics + Grafana panel for feedback observability
+
+Out of scope (deferred to Sprint 4):
+- Weekly curation job (was US-3.3) -- gates on feedback volume
+- BM25 RAG retrieval into prompt (was US-3.4) -- gates on curated YAML existing",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
+EPIC7,Epic 7 -- Drain3 baseline lifecycle,Epic,To Do,Medium,Drain3,"Activate the dormant S3 baseline plumbing in app/drain_analyzer.py. Every needed function already exists -- they just need a scheduler, a boot-time restore call, and three operator-facing endpoints.
+
+Why: a fresh pod has no way to catch up to the last known-good baseline. An on-call engineer who knows the system is healthy can't tell Drain3 ""learn from this moment.""
+
+Goals:
+- Boot-time download_baseline_from_s3() if local persistence empty AND bucket configured
+- APScheduler in-process upload_snapshot_to_s3() at configurable interval
+- Three operator endpoints: POST /drain3/snapshot, POST /drain3/baseline/tag, POST /drain3/baseline/restore
+- IAM policy + Grafana panel for snapshot age visibility
+
+Out of scope vs. backlog #1:
+- sources.yaml + topology hashing + calibration mode deferred. Dynamic discovery (US-5.1 Phase A) already works; hard-coding sources would regress that.",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
+EPIC8,Epic 8 -- Hallucination firewall + trace depth,Epic,To Do,High,Hallucination-Firewall,"Closes the structural gap exposed by the 2026-04-29 HighKongP95Latency 0b215ef3 incident along two dimensions: MCP-only data access (every data source the LLM sees must come through an MCP bridge -- no direct DB / Prometheus / in-process reads) and trace depth (drill into per-span attributes via the existing get_trace MCP tool that was never wired up).
+
+Why: the 0b215ef3 decision emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot as remediation for a Kong p95 latency alert. Investigation found three structural causes: (a) the F-4 confidence clamp adjusted the trust signal but didn't strip templated actions; (b) the pipeline never called get_trace(trace_id) so the LLM saw only service-boundary trace summaries; (c) several code paths read data directly (entity_baselines -> Prometheus, bounded_agency -> SQLite, exemplars -> in-process import), bypassing the MCP hallucination firewall.
+
+MCP-only invariant (durable architectural rule): every data source the LLM sees must come through an MCP bridge. Direct httpx/requests/DB calls are forbidden outside the MCP servers themselves and the sanctioned _mcp_call helper. Boot-time/migration code is exempt -- it never feeds the LLM.
+
+Tier mapping:
+- Tier 0 (S3-HF-01): F-4 clamp strips actions -- ships immediately, ~45 min
+- Tier 1 (S3-HF-07): trace drill via get_trace MCP -- the structural fix
+- Tier 2 (S3-HF-03): hypothesis-menu validator -- backstop
+- Tier 4 (S3-HF-09): chaos scorer 5th axis + corpus seed + CI gate -- measurement scaffold for Sprint 4
+- MCP integrity (S3-HF-04, 05, 06, 08): four code-path refactors + a CI lint
+- Bug (S3-HF-02): defensive template-lookup tests; actual root cause was LLM hallucination neutralized by S3-HF-01
+
+Out of scope (deferred to Sprint 4):
+- Tier 3 -- Iterative agentic gather (hypothesis-tree state, 3-5 day rewrite of bounded_agency.py). Gates on Sprint 3's Tier 4 measurement scaffold being green first.",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
+S3-CO-01,US-5.1 Phase A -- Per-service Drain3 (dict[service -> TemplateMiner]),Story,Done,High,RCA-Quality,"Replaced the global TemplateMiner with dict[service -> TemplateMiner] backed by FilePersistence per service. Auto-migrates pre-Phase-A drain3_state.bin to _unknown.bin. Adds /drain3/stats?service= query param. Live: spring-boot, nginx, proxy, otel-agent-init each have their own miner.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO1 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-02,US-5.1 Phase B -- Entity baselines (verification pending),Story,In Progress,High,RCA-Quality,"Code complete: app/entity_baselines.py + BaselineFacts dataclass + sigma-claim helper + 5-parallel-Prometheus quantile_over_time fetch. Verification still pending -- need to confirm a real RCA cites a baseline-sigma claim like ""X is N sigma above the same-hour 7-day baseline"". S3-HF-04 (MCP integrity refactor) closes this verification dependency by routing the baseline path through prometheus_mcp.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO2 (sprint3-plan.md)
+Blocked by: S3-HF-04 (MCP integrity refactor will unblock verification)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-03,US-5.3 -- Closed-loop feedback (override/confirm),Story,Done,High,RCA-Quality,"/feedback/override and /feedback/confirm endpoints + feedback table in SQLite + lazy triage_precision/triage_recall Prometheus metrics + similarity check in pre-LLM suppression. Feedback loop is wired end-to-end.
+
+---
+Story Points: 5
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO3 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-04,US-5.4 -- Adaptive thresholds on flappiest rules,Story,Done,Medium,RCA-Quality,"Adaptive-threshold logic shipped on the 3 flappiest rules: HighCpuUsage, HighMemoryUsage, MediumDiskUsage. Reduces phantom DatasourceNoData fires.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO4 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-05,US-5.8 -- Recurrence gates,Story,Done,High,RCA-Quality,"app/recurrence_gate.py with pre_llm_gate (Step 1c) + post_llm_gate (after US-5.3 override). Critical-severity bypass via _is_critical(). Per-rule opt-in via recurrence_gate annotation; MediumCpuUsage + MediumMemoryUsage opted in.
+
+---
+Story Points: 5
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO5 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-06,RCA quality hardening F-1 through F-5,Story,Done,Highest,RCA-Quality,"Five-part hardening of the RCA prose pipeline.
+
+F-1: Drain3 webhook now carries new template strings + sample anomalous lines.
+F-1.5: pipeline.py overrides ctx.anomaly_summary with the rich webhook description.
+F-2: surface-only LEDE regex + retry-on-validator-violations.
+F-3: hallucination_blocklist.yaml -- alert-keyed YAML rejecting alert-internal phrases (e.g. /actuator/* on HighP95Latency).
+F-4: confidence clamp to <= 0.4 if surface-only hit OR rca_quality=data_starved OR templated actions.
+F-5: wildcard-services exemplar score ceiling (intentional design).
+
+Note: F-4 originally clamped confidence only -- the strip-suggested-actions extension shipped 2026-04-29 under S3-HF-01.
+
+---
+Story Points: 8
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO6 (sprint3-plan.md)",SCRUM Sprint 3,8,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-07,Exemplar library + RCA prose philosophy (D17/D18/D19),Story,Done,High,RCA-Quality,"D17: 11-archetype exemplar library at app/exemplars/library.yaml -- pipeline injects the best-matching exemplar into every LLM prompt.
+D18: suggested-actions philosophy rewrite -- ""remediations, not investigations.""
+D19: RCA prose philosophy -- telemetry as means not end; matching surface-only LEDE validators.
+
+---
+Story Points: 5
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO7 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-08,Dashboard redesign + operator guide,Story,Done,Medium,RCA-Quality,"Figma-aligned, dark-by-default, sage-themed /dashboard with /dashboard/guide as the operator manual. Replaces the prior plain-table view.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO8 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-09,Pod-level alert rules PodHighMemoryUsage / PodHighCpuUsage,Story,Done,Medium,RCA-Quality,"New kubernetes_alerts group: PodHighMemoryUsage (working_set / limit > 85% for 2m) + PodHighCpuUsage (rate / quota > 80% for 2m). Both filter to namespace=app, container=spring-boot. Closes the host-level vs pod-level visibility gap.
+
+Two query bugs surfaced in chaos run 4 -- filed as Sprint 4 follow-ups: memory cgroup-churn aggregation + CPU label-mismatch.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO9 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-10,Chaos test harness,Story,Done,Medium,RCA-Quality,"monitoring-project/scripts/chaos/ -- runner.py, lib/{ssh_actions, decision_poller, rca_scorer}.py, tests/{base, target_down, high_memory_usage, high_cpu_usage, drain3_anomaly}.py. Runs from controller via Tailscale; SSH+kubectl into pods, induces failure, polls /decisions, scores RCA on 4 axes, regenerates monitoring-docs/chaos-report HTML.
+
+S3-HF-09 will extend the scorer with a 5th binary axis cited_injected_cause.
+
+---
+Story Points: 5
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO10 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-11,Daily audit feeds (static + live),Story,Done,Medium,RCA-Quality,"Two automated audit pipelines firing daily at 12:00 UTC.
+
+Static: Anthropic cloud /schedule routine, clones 6 repos, runs pytest + 8-section drift checklist, pushes audits/YYYY-MM-DD.md to private repo.
+
+Live: controller cron, fires 3 synthetic webhooks at adolin-wsl:8090, runs mechanical checks + claude -p grading, writes audits/YYYY-MM-DD-live.md.
+
+---
+Story Points: 3
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO11 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-12,Audit repo migrations + history scrub,Story,Done,Low,RCA-Quality,"Three manual audit pages migrated from public monitoring-docs to private monitoring-audit-results: rca-quality-audit, full-sweep audit, HighP95Latency investigation. SESSION_HANDOFF.md history scrubbed from public monitoring-docs via git filter-repo.
+
+---
+Story Points: 2
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO12 (sprint3-plan.md)",SCRUM Sprint 3,2,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-CO-13,Codify policy.py + bypass_llm.yaml,Story,To Do,Low,RCA-Quality,"Cleanup-only: extract the existing rule/LLM ordering into an explicit app/policy.py with three labeled branches (rule-bypass, rule+LLM, LLM-only fallback) and a bypass_llm.yaml of high-confidence patterns where deterministic action is sufficient. Behavior unchanged -- code organization only.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 5 -- RCA Quality v2 (close-out)
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3-CO13 (sprint3-plan.md)",SCRUM Sprint 3,1,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
+S3-FB-01,Extend feedback schema + endpoint + 4 MCP tools,Story,To Do,High,Feedback,"As an operator, I need to thumbs-up/down individual decisions and tag what was wrong, so future RCAs can learn from my feedback.
+
+Approach: extend the existing US-5.3 feedback table -- do NOT create v2. Adds operator-quality-vote alongside the existing override/confirm behavioral signal.
+
+Acceptance Criteria:
+- Schema migration in app/rca_store.py:_init_schema (idempotent ALTER TABLE):
+  - feedback ADD COLUMN rating TEXT (CHECK rating IN ('up','down') OR NULL)
+  - feedback ADD COLUMN tags TEXT (JSON array, only when rating='down')
+  - feedback ADD COLUMN actual_root_cause TEXT (only when rating='down', optional)
+  - feedback ADD COLUMN comment TEXT
+  - feedback ADD COLUMN rater TEXT
+- New endpoint POST /decisions/{id}/feedback with RatingFeedbackRequest Pydantic schema
+- Validation: tags + actual_root_cause rejected when rating=='up'; tags must be subset of 5 allowed enum values (wrong_severity, wrong_root_cause, wrong_evidence, wrong_action, missing_context)
+- 4 read-only MCP tools on monitoring-mcp-servers/rca_history_mcp/main.py (combined with S3-HF-06 work to land in one PR):
+  - get_feedback_stats -- counts by rating, top tags, rater frequency
+  - get_high_rated_examples(limit, since_days) -- up-rated decisions for prompt injection
+  - get_similar_decisions(alert_name, days, min_quality, min_confidence) -- quality-filtered (replaces direct-DB call in S3-HF-05)
+  - get_low_rated_examples_for_alert(alert_name, days) -- anti-examples
+- Existing US-5.3 endpoints unaffected; feedback_type stays for the override/confirm path
+
+Files: app/rca_store.py, app/models.py, app/main.py, tests/test_feedback_rating.py, monitoring-mcp-servers/rca_history_mcp/main.py.
+
+Done when: migration is idempotent; endpoint rejects invalid combos; all 4 MCP tools return sane stats over a seeded test DB.
+
+---
+Story Points: 4
+Estimate: 1 day
+Epic: Epic 6 -- Operator feedback loop
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.1 (sprint3-plan.md)
+Blocks: S3-FB-02
+Blocked by: (none)",SCRUM Sprint 3,4,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
+S3-FB-02,Operator rating UI,Story,To Do,High,Feedback,"As an operator, I need a minimal web form to thumbs-up/down a decision and add a tag/comment, so I can give feedback in 10 seconds without leaving the email or dashboard.
+
+Acceptance Criteria:
+- Vanilla-JS form (no framework) at app/static/rate.html
+- Decision context block (alert name, RCA prose, verdict) fetched via GET /decisions/{id}
+- Big up/down buttons; on down: 5 tag chips (multi-select) + textarea for actual_root_cause + textarea for comment
+- Submit calls POST /decisions/{id}/feedback (S3-FB-01 endpoint)
+- Success state with one-line confirmation
+- Email integration: app/email_renderer.py appends a ""Rate this decision"" link with ?rate=1 to the decision URL
+- Dashboard ""Rate"" button on decision-detail panel opens rate.html?id=<decision_id>
+
+Files: app/static/rate.html, app/static/rate.css, app/email_renderer.py, app/main.py (serve static), dashboard panel template.
+
+Done when: email link -> form -> submit -> row in feedback table -> confirmation. Dashboard ""Rate"" link works for any decision listed.
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 6 -- Operator feedback loop
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.2 (sprint3-plan.md)
+Blocked by: S3-FB-01",SCRUM Sprint 3,2,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
+S3-FB-03,Feedback observability,Story,To Do,Medium,Feedback,"As an SRE, I need Prometheus metrics + a Grafana panel for feedback volume so I can see whether operators are actually rating decisions.
+
+Acceptance Criteria:
+- New Prometheus metrics in app/metrics.py:
+  - feedback_total{rating}
+  - feedback_tag_total{tag}
+- New panel on triage-service-health Grafana dashboard: feedback volume + tag breakdown
+- Dashboard JSON committed to git
+
+Files: app/metrics.py, roles/grafana/templates/dashboards/triage-service-health.json.
+
+Done when: panel renders with non-zero data after first 24h post-launch.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 6 -- Operator feedback loop
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.5 (sprint3-plan.md)
+Blocked by: S3-FB-01 (needs the metrics)",SCRUM Sprint 3,1,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
+S3-DR-01,Scheduled snapshots + boot-time restore,Story,To Do,High,Drain3,"As a platform engineer, I need the Drain3 baseline to survive pod restarts and replicate to S3 on a schedule, so a fresh pod doesn't have to relearn templates from scratch.
+
+Acceptance Criteria:
+- app/config.py additions:
+  - drain3_s3_bucket: str = """" (empty disables S3 lifecycle)
+  - drain3_s3_snapshot_interval: int = 3600 (seconds)
+  - drain3_s3_prefix: str = ""drain3""
+- In app/main.py:lifespan():
+  - Boot-time: if drain3_s3_bucket set AND local persistence file missing/empty, call existing download_baseline_from_s3() BEFORE seed_from_loki()
+  - Periodic: APScheduler job calls upload_snapshot_to_s3() every drain3_s3_snapshot_interval seconds; no-op when bucket empty
+- All five S3 functions already exist in drain_analyzer.py
+- Add apscheduler to requirements.txt
+
+Files: app/config.py, app/main.py (lifespan), tests/test_drain3_lifecycle.py.
+
+Done when: fresh pod on fresh PVC + bucket with a known-good baseline -> pod boots with the baseline loaded; total_clusters > 0 immediately; scheduled snapshot fires once within first interval.
+
+---
+Story Points: 3
+Estimate: 0.75 day
+Epic: Epic 7 -- Drain3 baseline lifecycle
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.6 (sprint3-plan.md)
+Blocks: S3-DR-02
+Blocked by: (none) -- S3 functions already exist",SCRUM Sprint 3,3,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
+S3-DR-02,Operator-facing Drain3 endpoints,Story,To Do,Medium,Drain3,"As an on-call engineer, I need three buttons -- ""snapshot now"", ""this is healthy, save it"", ""restore the last known-good"" -- so I can manage the Drain3 baseline without SSH or AWS console.
+
+Acceptance Criteria:
+- Three new HTTP endpoints on the triage service:
+  - POST /drain3/snapshot wraps upload_snapshot_to_s3()
+  - POST /drain3/baseline/tag wraps tag_known_good() (the ""this is healthy"" button)
+  - POST /drain3/baseline/restore wraps download_baseline_from_s3() + reinit miner
+- /drain3/stats extended with: last_snapshot_uploaded_at, last_baseline_restored_at, s3_bucket_configured
+
+Files: app/main.py, tests/test_drain3_endpoints.py.
+
+Done when: operator runbook in monitoring-docs/build-guide.html shows ""tag baseline"" -> 200 -> snapshot file exists in S3 with known-good-YYYY-MM-DD.bin key.
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 7 -- Drain3 baseline lifecycle
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.7 (sprint3-plan.md)
+Blocked by: S3-DR-01",SCRUM Sprint 3,2,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
+S3-DR-03,IAM policy + Grafana visibility for Drain3 S3,Story,To Do,Low,Drain3,"As an SRE, I need a Grafana panel showing snapshot age so I can see at a glance whether the baseline is fresh.
+
+Acceptance Criteria:
+- IAM policy update on existing cires-observability-demo-* bucket: grant s3:PutObject + s3:GetObject + s3:ListBucket to the laptop's IAM principal (or static access-key IAM user used by the triage service)
+- Grafana panel on triage-service-health dashboard: snapshot age (now - last_snapshot_uploaded_at) + time since last tag_known_good
+
+Files: provisioning-monitoring-infra/iam.tf (or new s3-policies.tf), roles/grafana/templates/dashboards/triage-service-health.json.
+
+Done when: Grafana panel renders snapshot age post-launch.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 7 -- Drain3 baseline lifecycle
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.8 (sprint3-plan.md)
+Blocked by: S3-DR-01, S3-DR-02",SCRUM Sprint 3,1,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-01,Tier 0 -- F-4 clamp strips actions + emits diagnostic_steps,Story,Done,Highest,Hallucination-Firewall,"As an SRE, I need the F-4 confidence clamp to strip templated/untrustworthy suggested_actions and replace them with read-only diagnostic verbs, so a clamped 0.40 decision can never email kubectl rollout/scale/set commands.
+
+Trigger: 2026-04-29 HighKongP95Latency 0b215ef3 incident emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot at 0.40 confidence. F-4 had clamped confidence but did NOT strip the bad actions.
+
+Acceptance Criteria:
+- LLMDecision gains diagnostic_steps: list[str] field with the existing list-coercion validator
+- RCARecord gains diagnostic_steps: Optional[str] (JSON list)
+- New app/clamp_actions.py module with diagnostic_steps_for_clamp(alert, rca, quality, actions_source) -> list[str]:
+  - Alert-aware: HighKongP95Latency -> upstream-vs-proxy PromQL pivot; HighP95Latency on spring-boot -> hikari + JVM GC pivots; *MemoryUsage/PodHigh* -> topk container_memory pivot; TargetDown -> kube events pivot; Drain3AnomalyDetected -> read template lines (no metric invention)
+  - Always ends with explicit ""Do NOT run kubectl rollout/scale/set on `{service}` until a specific cause is named""
+  - Read-only: no kubectl rollout/scale/set/patch/delete, no systemctl restart, no docker restart
+- pipeline.py Step 6d: when clamp fires, also strip suggested_actions and populate diagnostic_steps. Evidence preserved verbatim so quality classifier doesn't drop to needs_review
+- pipeline.py Step 7: persist diagnostic_steps in RCARecord
+- rca_store.py: column migration + INSERT slot + JSON-decode at /decisions API boundary
+- notifier.py: new ""Diagnostic steps -- read-only; investigate before remediating"" card; ""Withheld"" explanation in Suggested actions card when clamp stripped them
+- Tests: 24 new tests across tests/test_clamp_actions.py (8), tests/test_pipeline_clamp.py (6), tests/test_action_templates.py (5 defensive), tests/test_confidence_clamp_f4.py (5 unchanged for legacy path)
+
+Validation case: replay decision 0b215ef3-74fa-4e1f-88a4-057437f04d0e through patched pipeline. Assert: confidence=0.40, suggested_actions=[], diagnostic_steps[0].startswith(""Open Jaeger""), no kubectl substring anywhere.
+
+Shipped 2026-04-29 in commit b0f1d0c on monitoring-triage-service:main. Suite 178 -> 204, zero regressions.
+
+---
+Story Points: 1
+Estimate: 0.25 day (actual: ~3 hours including investigation)
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.9 (sprint3-plan.md)
+Tier: 0 (immediate stop-the-bleeding)
+Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,29/Apr/26
+S3-HF-02,Defensive tests for HighKongP95Latency template lookup,Story,Done,Highest,Hallucination-Firewall,"Originally framed as ""bug: HighKongP95Latency wrong-archetype lookup"" after the 0b215ef3 incident emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot. Investigation 2026-04-29 confirmed the template lookup is FINE: HighKongP95Latency rule at suggested_actions.yaml line 133 returns Kong-targeting actions; the OOMKill template at line 64-77 only matches ^(High|Medium|Critical)MemoryUsage$. The bad 0b215ef3 actions came from the LLM directly (decision.suggested_actions was non-empty so fill_template never fired).
+
+Reframed as defensive tests: pin the regex boundary so future YAML edits can't introduce wrong-archetype keying. Actual remediation for LLM-side bad actions lives in S3-HF-01 (Tier 0 strip).
+
+Acceptance Criteria:
+- New tests/test_action_templates.py with 5 defensive tests:
+  - test_high_kong_p95_latency_returns_kong_targeted_actions: HighKongP95Latency MUST target kong-kong, NOT contain memory=2Gi --requests=memory=1Gi signature
+  - test_high_memory_usage_returns_oomkill_template: confirm OOMKill template fires for HighMemoryUsage (its actual alertname)
+  - test_high_p95_latency_first_action_is_not_unconditional_memory_bump: first action is rollout restart (connection pool play); memory bump must be conditional ('If ...')
+  - test_oomkill_template_does_not_match_kong_or_latency_alertnames: regex boundary pin (HighKongP95Latency, HighP95Latency, HighMemoryUsageButNotReally, MyHighMemoryUsage all rejected)
+  - test_high_kong_p95_does_not_target_spring_boot_in_template: defense in depth across service label variants
+
+Shipped 2026-04-29 in commit b0f1d0c.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.10 (sprint3-plan.md)
+Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,29/Apr/26
+S3-HF-03,Tier 2 -- Hypothesis-menu validator + cause-evidence rule,Story,To Do,High,Hallucination-Firewall,"As an SRE, I need the validator to reject RCAs that list possibilities without committing (""possibly X or Y"", ""may be due to"") and RCAs whose named cause shares no token with the evidence list, so the LLM is forced to commit to one diagnosis or admit data starvation.
+
+Acceptance Criteria:
+- Add _HYPOTHESIS_MENU_PATTERNS to app/response_validator.py:
+  - ""possibly X or Y"", ""either A or B"", ""may be due to (a slow query|pool saturation|GC)"", ""could be one of""
+  - Avoid FP on legitimate ""or""-prose by requiring 5+ words on either side
+- Add cause-must-share-token-with-evidence rule:
+  - Tokenize RCA's first sentence (4+ char words, lowercased)
+  - Tokenize decision.evidence list
+  - Fail if intersection minus stopwords (this/that/with/from/have/service/alert/metric) is empty
+- Both rules ship aggressive behind feature flag triage_hypothesis_menu_strict (default True)
+- New Prometheus metric triage_validator_retries_total{reason} so we can dial back if FP rate exceeds 5%
+- Hits trigger the existing retry path (pipeline.py:444-566); Tier 0 clamp (S3-HF-01) is the safety net for retries that still fail
+- 8+ new test cases in tests/test_response_validator.py covering FP/TP boundaries
+
+Validation case: replay 0b215ef3 RCA -> should_retry=True due to ""hypothesis-menu"" hit on ""possibly a regressed query or saturated connection pool"".
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.11 (sprint3-plan.md)
+Tier: 2 (validator backstop)
+Blocked by: (none)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-04,MCP integrity -- Route entity_baselines through prometheus_mcp,Story,To Do,High,Hallucination-Firewall,"As an architect, I need every Prometheus query the LLM sees to flow through prometheus_mcp -- not direct httpx calls -- so the MCP-only invariant (the hallucination firewall) holds without exception.
+
+Trigger: app/entity_baselines.py:144 calls httpx.AsyncClient.get(prometheus_url + ""/api/v1/query"") directly. Found 2026-04-29 during 0b215ef3 incident analysis as one of three MCP-bypass code paths.
+
+Acceptance Criteria:
+- Refactor app/entity_baselines.py to call prometheus_mcp instead of direct httpx
+- Verify existing prometheus_mcp /tools/query covers quantile_over_time(...[7d]) efficiently; if not, extend MCP tool surface with a dedicated endpoint
+- Update get_baseline() call site in app/pipeline.py:360-390 to pass MCP URL not raw Prometheus URL
+- All baseline fetches show up in prometheus_mcp request logs (observable)
+- This story also closes S3-CO-02 (US-5.1 Phase B verification): once baselines flow through MCP traffic, baseline-sigma claims in real RCAs become directly verifiable from MCP logs
+
+Files: app/entity_baselines.py, app/pipeline.py, app/config.py (URL setting), possibly monitoring-mcp-servers/prometheus_mcp/main.py.
+
+Done when: zero httpx calls in entity_baselines.py; baseline fetches visible in prometheus_mcp request logs; existing baseline tests pass.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.12 (sprint3-plan.md)
+Blocks: S3-CO-02 (verification dependency)
+Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-05,MCP integrity -- Route bounded_agency rca_history through MCP,Story,To Do,High,Hallucination-Firewall,"As an architect, I need bounded_agency.py to route ALL its data lookups through MCP servers -- no direct DB queries, no in-process module imports -- so the LLM never sees data that didn't pass through the hallucination firewall.
+
+Trigger: app/bounded_agency.py:222-242 currently:
+- rca_history.similar -> direct store.get_recent_decisions_for_alert() (DB)
+- rca_history.list_exemplars -> direct ""from app import exemplars"" (in-process)
+- rca_history.get_exemplar -> same direct in-process import
+
+Acceptance Criteria:
+- Refactor all three to HTTP calls against rca_history_mcp on port 8095
+- For rca_history.similar: use the new get_similar_decisions() tool from S3-HF-06
+- For list_exemplars/get_exemplar: add corresponding tools to rca_history_mcp (move app/exemplars/ data into a location the MCP server can load, OR expose a read-only API on the triage service that the MCP wraps -- pick whichever is cleaner during implementation)
+- After this lands, the entire bounded_agency.py tool whitelist routes through MCP servers exclusively
+
+Files: app/bounded_agency.py, monitoring-mcp-servers/rca_history_mcp/main.py (new exemplar tools), tests.
+
+Done when: zero direct store.* or ""from app import exemplars"" calls remain in bounded_agency.py; existing bounded-agency tests pass against MCP-routed paths.
+
+---
+Story Points: 1
+Estimate: 0.25 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.13 (sprint3-plan.md)
+Blocked by: S3-HF-06 (needs new MCP tools)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-06,Quality-rated rca_history MCP tools,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need MCP tools that filter past decisions by quality + confidence, so I can prefer high-rated similar decisions and learn from low-rated ones.
+
+Combined with S3-FB-01's planned MCP additions to land in one cohesive rca_history_mcp PR.
+
+Acceptance Criteria:
+- Extend monitoring-mcp-servers/rca_history_mcp/main.py with quality-aware tools:
+  - get_similar_decisions(alert_name, days, min_quality, min_confidence) -- filter by rca_quality in {actionable, data_starved, needs_review} and minimum llm_confidence. Replaces direct-DB call in S3-HF-05
+  - get_low_rated_examples_for_alert(alert_name, days) -- anti-examples (rating='down' from S3-FB-01's feedback table) for the prompt's ""Past mistakes -- do NOT repeat"" section
+- Plus S3-FB-01's get_feedback_stats and get_high_rated_examples (single PR)
+- Unit tests over a seeded test DB exercising min_quality filtering + low-rated-example retrieval
+
+Files: monitoring-mcp-servers/rca_history_mcp/main.py, tests/test_rca_history_mcp.py.
+
+Done when: all 4 tools return sane results over a seeded test DB; integration test exercises min_quality='actionable' filtering + low-rated-example retrieval.
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.14 (sprint3-plan.md)
+Blocks: S3-HF-05 (MCP-integrity refactor depends on these tools)
+Blocked by: S3-FB-01 (feedback table schema must exist first for low-rated tool)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-07,Tier 1 -- Deeper trace gather via get_trace MCP,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need to see span-level trace details (operation, db.statement, http.target, error tags) when a latency alert fires, not just service-boundary span summaries -- so I can name a specific cause inside the slow service instead of producing a hypothesis menu.
+
+Trigger: 0b215ef3 RCA correctly identified ""Kong span 3ms vs upstream span 8200ms"" but couldn't name what was slow inside spring-boot. The pipeline never called the existing jaeger_mcp /tools/get_trace endpoint -- it stops at find_traces summary.
+
+Acceptance Criteria:
+- Extend app/context.py:_fetch_jaeger to call jaeger_mcp /tools/get_trace on top-K slowest + any error traces (default K=3, parallel via asyncio.gather)
+- Add new models in app/models.py:
+  - TraceSpanSummary: trace_id, span_id, operation, service, duration_ms, parent_operation, db_statement (truncated 200 chars), http_target, http_status, error
+  - TraceDrillResult: trace_id, total_duration_ms, span_count, dominant_service, dominant_service_pct, slowest_span, db_call_count, db_total_ms, has_errors
+  - GatheredContext gains trace_drills: Optional[list[TraceDrillResult]]
+- New prompt section in app/llm_client.py rendering: dominant_service + percentage + db_call_count + db_total_ms, plus the slowest span line with operation + db.statement (if present, truncated) + http.target + status + error flag
+- Pre-implementation step (per Q5=B): sample 10 spring-boot traces in production via curl http://jaeger-mcp:8094/tools/get_trace?trace_id=..., eyeball db.statement values to confirm JDBC parameterization. Default assumption: parameterized -- no PII redaction needed. If literal values appear: add a regex redactor stripping numeric literals (\\d{3,}), email-shaped tokens, UUIDs before db.statement field lands in evidence/email
+- New settings: jaeger_drill_top_k, jaeger_drill_min_duration_ms
+
+Files: app/context.py (_fetch_jaeger + new helpers _pick_drill_candidates, _summarize_trace), app/models.py (new dataclasses), app/llm_client.py (prompt section), app/config.py, tests/test_context_jaeger_drill.py.
+
+Done when: replay 0b215ef3 window -- prompt sent to LLM includes a ""Trace span breakdown"" section with ""dominant=spring-boot 99%, db_calls=N, db_total=Xms, slowest span: SELECT ... = Yms"". A new chaos test high_p95_latency (Sprint 4) will be the end-to-end verifier.
+
+---
+Story Points: 3
+Estimate: 1.5 days
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.15 (sprint3-plan.md)
+Tier: 1 (the structural fix)
+Blocked by: (none) -- get_trace MCP endpoint already exists",SCRUM Sprint 3,3,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-08,MCP integrity -- CI lint forbidding direct data access,Story,To Do,High,Hallucination-Firewall,"As an architect, I need a CI check that fails any PR adding direct httpx/requests/aiosqlite calls outside the MCP boundaries, so the MCP-only invariant survives team turnover.
+
+Acceptance Criteria:
+- Add CI check (ruff custom rule, semgrep pattern, or grep-based pre-commit) forbidding httpx/requests/aiosqlite/raw-SQL calls outside allowed boundaries:
+  - Allowed: monitoring-mcp-servers/* (the MCP layer itself), app/context.py:_mcp_call (the only sanctioned bridge from triage-service to MCPs)
+- Exempt boundary (per Q3=B): lifespan/startup/migration code -- app/main.py:lifespan, app/rca_store.py:_init_schema, drain3 boot restore in S3-DR-01 (download_baseline_from_s3). These are operator-tier and never feed the LLM
+- Forbidden everywhere else: any module that runs during request handling and could reach the LLM prompt
+- Document the rule in a new monitoring-docs/architectural-invariants.md page so it survives team turnover
+- Add to GitHub Actions workflow for monitoring-triage-service + monitoring-mcp-servers
+
+Files: .github/workflows/lint.yml (or equivalent), pyproject.toml (ruff config), monitoring-docs/architectural-invariants.md (new doc), pre-commit hook.
+
+Done when: CI fails the build when a PR adds a forbidden direct call; a deliberate test PR with httpx call in app/pipeline.py is rejected.
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.16 (sprint3-plan.md)
+Blocked by: S3-HF-04, S3-HF-05 (so the lint doesn't fire on existing offenders)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+S3-HF-09,Tier 4 -- Chaos scorer 5th axis + corpus seed + CI gate,Story,To Do,Medium,Hallucination-Firewall,"As an SRE, I need a binary ""did the RCA name the actual injected cause?"" score on every chaos run, plus a CI regression gate against a seeded corpus of bad decisions, so Sprint 4's Tier 3 agentic loop can be measured rather than shipped blind.
+
+Why this must land BEFORE Sprint 4's Tier 3: Tier 3 (iterative agentic loop with hypothesis-tree state) is a high-cost high-risk change. Without a binary metric and a corpus regression gate, Tier 3 ships unmeasured. Tier 4 is the scoreboard.
+
+Acceptance Criteria:
+- Extend monitoring-project/scripts/chaos/lib/rca_scorer.py with a 5th binary axis cited_injected_cause (0/1)
+- Add expected_cause_tokens: list[str] to monitoring-project/scripts/chaos/tests/base.py (ChaosTest base class). Score 1.0 if any token appears in decision.rca_report or decision.evidence; 0.0 otherwise
+- Seed monitoring-triage-service/tests/corpus/labeled/bad/hypothesis_only_clamp_leak.json with the failed 0b215ef3 decision JSON:
+  - Full payload + expected_violations (hypothesis-menu, cause-evidence-mismatch from S3-HF-03)
+  - expected_post_clamp_actions_must_not_contain (kubectl rollout, kubectl set resources)
+  - expected_post_clamp_actions_must_contain_any_of (Open Jaeger, hikaricp_connections_active, jvm_gc_pause_seconds)
+- Add monitoring-triage-service/tests/test_corpus_regression.py: every JSON in corpus/labeled/bad/* must trigger >=1 violation from validate()
+- Wire into CI as a regression gate
+
+Files: monitoring-project/scripts/chaos/lib/rca_scorer.py, monitoring-project/scripts/chaos/tests/base.py, monitoring-triage-service/tests/corpus/labeled/bad/hypothesis_only_clamp_leak.json (new seed), monitoring-triage-service/tests/test_corpus_regression.py, CI config.
+
+Done when: chaos report shows new cited_injected_cause column with binary pass/fail per test row. A deliberate test PR weakening the validator (removing the hypothesis-menu pattern) fails the corpus regression gate.
+
+---
+Story Points: 2
+Estimate: 0.5 day
+Epic: Epic 8 -- Hallucination firewall + trace depth
+Sprint: SCRUM Sprint 3
+Due date: 8 May 2026
+Cross-reference: US-3.17 (sprint3-plan.md)
+Tier: 4 (measurement scaffold for Sprint 4 Tier 3)
+Blocked by: S3-HF-03 (validator must catch the corpus seed's expected_violations)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
