@@ -1,5 +1,5 @@
 Work item Id,Summary,Work type,Status,Priority,Labels,Description,Sprint,Story Points,Parent,Reporter,Assignee,Due date
-EPIC5,Epic 5 -- RCA Quality v2 (close-out),Epic,Done,High,RCA-Quality,"Backfill Sprint 3's epic record with the RCA-quality work shipped between 2026-04-23 and 2026-04-29. Most stories are already Done; this epic captures them under a single Sprint 3 banner so the historical record matches when work actually shipped.
+1,EPIC5: Epic 5 -- RCA Quality v2 (close-out),Epic,Done,High,RCA-Quality,"Backfill Sprint 3's epic record with the RCA-quality work shipped between 2026-04-23 and 2026-04-29. Most stories are already Done; this epic captures them under a single Sprint 3 banner so the historical record matches when work actually shipped.
 
 Goals:
 - Per-service Drain3 (dict[service -> TemplateMiner]) live for spring-boot, nginx, proxy, otel-agent-init
@@ -13,7 +13,7 @@ Goals:
 
 Out of scope:
 - The 4 high-leverage stories that triggered this epic's existence (US-3.9 onwards) are tracked under EPIC8 (Hallucination firewall)",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
-EPIC6,Epic 6 -- Operator feedback loop,Epic,To Do,High,Feedback,"Capture per-decision operator feedback (thumbs up/down + structured tags + free-text correction) and expose it via MCP for future RCAs to learn from. Curated RAG retrieval (originally planned as US-3.3 + US-3.4) deferred to Sprint 4 since it depends on accumulated feedback volume.
+2,EPIC6: Epic 6 -- Operator feedback loop,Epic,To Do,High,Feedback,"Capture per-decision operator feedback (thumbs up/down + structured tags + free-text correction) and expose it via MCP for future RCAs to learn from. Curated RAG retrieval (originally planned as US-3.3 + US-3.4) deferred to Sprint 4 since it depends on accumulated feedback volume.
 
 Goals:
 - Extend (do NOT replace) the existing US-5.3 feedback table with rating/tags/actual_root_cause/comment/rater columns
@@ -25,7 +25,7 @@ Goals:
 Out of scope (deferred to Sprint 4):
 - Weekly curation job (was US-3.3) -- gates on feedback volume
 - BM25 RAG retrieval into prompt (was US-3.4) -- gates on curated YAML existing",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
-EPIC7,Epic 7 -- Drain3 baseline lifecycle,Epic,To Do,Medium,Drain3,"Activate the dormant S3 baseline plumbing in app/drain_analyzer.py. Every needed function already exists -- they just need a scheduler, a boot-time restore call, and three operator-facing endpoints.
+3,EPIC7: Epic 7 -- Drain3 baseline lifecycle,Epic,To Do,Medium,Drain3,"Activate the dormant S3 baseline plumbing in app/drain_analyzer.py. Every needed function already exists -- they just need a scheduler, a boot-time restore call, and three operator-facing endpoints.
 
 Why: a fresh pod has no way to catch up to the last known-good baseline. An on-call engineer who knows the system is healthy can't tell Drain3 ""learn from this moment.""
 
@@ -37,7 +37,7 @@ Goals:
 
 Out of scope vs. backlog #1:
 - sources.yaml + topology hashing + calibration mode deferred. Dynamic discovery (US-5.1 Phase A) already works; hard-coding sources would regress that.",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
-EPIC8,Epic 8 -- Hallucination firewall + trace depth,Epic,To Do,High,Hallucination-Firewall,"Closes the structural gap exposed by the 2026-04-29 HighKongP95Latency 0b215ef3 incident along two dimensions: MCP-only data access (every data source the LLM sees must come through an MCP bridge -- no direct DB / Prometheus / in-process reads) and trace depth (drill into per-span attributes via the existing get_trace MCP tool that was never wired up).
+4,EPIC8: Epic 8 -- Hallucination firewall + trace depth,Epic,To Do,High,Hallucination-Firewall,"Closes the structural gap exposed by the 2026-04-29 HighKongP95Latency 0b215ef3 incident along two dimensions: MCP-only data access (every data source the LLM sees must come through an MCP bridge -- no direct DB / Prometheus / in-process reads) and trace depth (drill into per-span attributes via the existing get_trace MCP tool that was never wired up).
 
 Why: the 0b215ef3 decision emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot as remediation for a Kong p95 latency alert. Investigation found three structural causes: (a) the F-4 confidence clamp adjusted the trust signal but didn't strip templated actions; (b) the pipeline never called get_trace(trace_id) so the LLM saw only service-boundary trace summaries; (c) several code paths read data directly (entity_baselines -> Prometheus, bounded_agency -> SQLite, exemplars -> in-process import), bypassing the MCP hallucination firewall.
 
@@ -53,15 +53,15 @@ Tier mapping:
 
 Out of scope (deferred to Sprint 4):
 - Tier 3 -- Iterative agentic gather (hypothesis-tree state, 3-5 day rewrite of bounded_agency.py). Gates on Sprint 3's Tier 4 measurement scaffold being green first.",SCRUM Sprint 3,,,Lina Laaraich,,08/May/26
-S3-CO-01,US-5.1 Phase A -- Per-service Drain3 (dict[service -> TemplateMiner]),Story,Done,High,RCA-Quality,"Replaced the global TemplateMiner with dict[service -> TemplateMiner] backed by FilePersistence per service. Auto-migrates pre-Phase-A drain3_state.bin to _unknown.bin. Adds /drain3/stats?service= query param. Live: spring-boot, nginx, proxy, otel-agent-init each have their own miner.
+5,S3-CO-01: US-5.1 Phase A -- Per-service Drain3 (dict[service -> TemplateMiner]),Story,Done,High,RCA-Quality,"Replaced the global TemplateMiner with dict[service -> TemplateMiner] backed by FilePersistence per service. Auto-migrates pre-Phase-A drain3_state.bin to _unknown.bin. Adds /drain3/stats?service= query param. Live: spring-boot, nginx, proxy, otel-agent-init each have their own miner.
 
 ---
 Story Points: 3
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO1 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-02,US-5.1 Phase B -- Entity baselines (verification pending),Story,In Progress,High,RCA-Quality,"Code complete: app/entity_baselines.py + BaselineFacts dataclass + sigma-claim helper + 5-parallel-Prometheus quantile_over_time fetch. Verification still pending -- need to confirm a real RCA cites a baseline-sigma claim like ""X is N sigma above the same-hour 7-day baseline"". S3-HF-04 (MCP integrity refactor) closes this verification dependency by routing the baseline path through prometheus_mcp.
+Cross-reference: US-3-CO1 (sprint3-plan.md)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+6,S3-CO-02: US-5.1 Phase B -- Entity baselines (verification pending),Story,In Progress,High,RCA-Quality,"Code complete: app/entity_baselines.py + BaselineFacts dataclass + sigma-claim helper + 5-parallel-Prometheus quantile_over_time fetch. Verification still pending -- need to confirm a real RCA cites a baseline-sigma claim like ""X is N sigma above the same-hour 7-day baseline"". S3-HF-04 (MCP integrity refactor) closes this verification dependency by routing the baseline path through prometheus_mcp.
 
 ---
 Story Points: 3
@@ -69,32 +69,32 @@ Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3-CO2 (sprint3-plan.md)
-Blocked by: S3-HF-04 (MCP integrity refactor will unblock verification)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-03,US-5.3 -- Closed-loop feedback (override/confirm),Story,Done,High,RCA-Quality,"/feedback/override and /feedback/confirm endpoints + feedback table in SQLite + lazy triage_precision/triage_recall Prometheus metrics + similarity check in pre-LLM suppression. Feedback loop is wired end-to-end.
+Blocked by: S3-HF-04 (MCP integrity refactor will unblock verification)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+7,S3-CO-03: US-5.3 -- Closed-loop feedback (override/confirm),Story,Done,High,RCA-Quality,"/feedback/override and /feedback/confirm endpoints + feedback table in SQLite + lazy triage_precision/triage_recall Prometheus metrics + similarity check in pre-LLM suppression. Feedback loop is wired end-to-end.
 
 ---
 Story Points: 5
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO3 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-04,US-5.4 -- Adaptive thresholds on flappiest rules,Story,Done,Medium,RCA-Quality,"Adaptive-threshold logic shipped on the 3 flappiest rules: HighCpuUsage, HighMemoryUsage, MediumDiskUsage. Reduces phantom DatasourceNoData fires.
+Cross-reference: US-3-CO3 (sprint3-plan.md)",SCRUM Sprint 3,5,1,Lina Laaraich,Lina Laaraich,08/May/26
+8,S3-CO-04: US-5.4 -- Adaptive thresholds on flappiest rules,Story,Done,Medium,RCA-Quality,"Adaptive-threshold logic shipped on the 3 flappiest rules: HighCpuUsage, HighMemoryUsage, MediumDiskUsage. Reduces phantom DatasourceNoData fires.
 
 ---
 Story Points: 3
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO4 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-05,US-5.8 -- Recurrence gates,Story,Done,High,RCA-Quality,"app/recurrence_gate.py with pre_llm_gate (Step 1c) + post_llm_gate (after US-5.3 override). Critical-severity bypass via _is_critical(). Per-rule opt-in via recurrence_gate annotation; MediumCpuUsage + MediumMemoryUsage opted in.
+Cross-reference: US-3-CO4 (sprint3-plan.md)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+9,S3-CO-05: US-5.8 -- Recurrence gates,Story,Done,High,RCA-Quality,"app/recurrence_gate.py with pre_llm_gate (Step 1c) + post_llm_gate (after US-5.3 override). Critical-severity bypass via _is_critical(). Per-rule opt-in via recurrence_gate annotation; MediumCpuUsage + MediumMemoryUsage opted in.
 
 ---
 Story Points: 5
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO5 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-06,RCA quality hardening F-1 through F-5,Story,Done,Highest,RCA-Quality,"Five-part hardening of the RCA prose pipeline.
+Cross-reference: US-3-CO5 (sprint3-plan.md)",SCRUM Sprint 3,5,1,Lina Laaraich,Lina Laaraich,08/May/26
+10,S3-CO-06: RCA quality hardening F-1 through F-5,Story,Done,Highest,RCA-Quality,"Five-part hardening of the RCA prose pipeline.
 
 F-1: Drain3 webhook now carries new template strings + sample anomalous lines.
 F-1.5: pipeline.py overrides ctx.anomaly_summary with the rich webhook description.
@@ -110,8 +110,8 @@ Story Points: 8
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO6 (sprint3-plan.md)",SCRUM Sprint 3,8,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-07,Exemplar library + RCA prose philosophy (D17/D18/D19),Story,Done,High,RCA-Quality,"D17: 11-archetype exemplar library at app/exemplars/library.yaml -- pipeline injects the best-matching exemplar into every LLM prompt.
+Cross-reference: US-3-CO6 (sprint3-plan.md)",SCRUM Sprint 3,8,1,Lina Laaraich,Lina Laaraich,08/May/26
+11,S3-CO-07: Exemplar library + RCA prose philosophy (D17/D18/D19),Story,Done,High,RCA-Quality,"D17: 11-archetype exemplar library at app/exemplars/library.yaml -- pipeline injects the best-matching exemplar into every LLM prompt.
 D18: suggested-actions philosophy rewrite -- ""remediations, not investigations.""
 D19: RCA prose philosophy -- telemetry as means not end; matching surface-only LEDE validators.
 
@@ -120,16 +120,16 @@ Story Points: 5
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO7 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-08,Dashboard redesign + operator guide,Story,Done,Medium,RCA-Quality,"Figma-aligned, dark-by-default, sage-themed /dashboard with /dashboard/guide as the operator manual. Replaces the prior plain-table view.
+Cross-reference: US-3-CO7 (sprint3-plan.md)",SCRUM Sprint 3,5,1,Lina Laaraich,Lina Laaraich,08/May/26
+12,S3-CO-08: Dashboard redesign + operator guide,Story,Done,Medium,RCA-Quality,"Figma-aligned, dark-by-default, sage-themed /dashboard with /dashboard/guide as the operator manual. Replaces the prior plain-table view.
 
 ---
 Story Points: 3
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO8 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-09,Pod-level alert rules PodHighMemoryUsage / PodHighCpuUsage,Story,Done,Medium,RCA-Quality,"New kubernetes_alerts group: PodHighMemoryUsage (working_set / limit > 85% for 2m) + PodHighCpuUsage (rate / quota > 80% for 2m). Both filter to namespace=app, container=spring-boot. Closes the host-level vs pod-level visibility gap.
+Cross-reference: US-3-CO8 (sprint3-plan.md)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+13,S3-CO-09: Pod-level alert rules PodHighMemoryUsage / PodHighCpuUsage,Story,Done,Medium,RCA-Quality,"New kubernetes_alerts group: PodHighMemoryUsage (working_set / limit > 85% for 2m) + PodHighCpuUsage (rate / quota > 80% for 2m). Both filter to namespace=app, container=spring-boot. Closes the host-level vs pod-level visibility gap.
 
 Two query bugs surfaced in chaos run 4 -- filed as Sprint 4 follow-ups: memory cgroup-churn aggregation + CPU label-mismatch.
 
@@ -138,8 +138,8 @@ Story Points: 3
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO9 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-10,Chaos test harness,Story,Done,Medium,RCA-Quality,"monitoring-project/scripts/chaos/ -- runner.py, lib/{ssh_actions, decision_poller, rca_scorer}.py, tests/{base, target_down, high_memory_usage, high_cpu_usage, drain3_anomaly}.py. Runs from controller via Tailscale; SSH+kubectl into pods, induces failure, polls /decisions, scores RCA on 4 axes, regenerates monitoring-docs/chaos-report HTML.
+Cross-reference: US-3-CO9 (sprint3-plan.md)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+14,S3-CO-10: Chaos test harness,Story,Done,Medium,RCA-Quality,"monitoring-project/scripts/chaos/ -- runner.py, lib/{ssh_actions, decision_poller, rca_scorer}.py, tests/{base, target_down, high_memory_usage, high_cpu_usage, drain3_anomaly}.py. Runs from controller via Tailscale; SSH+kubectl into pods, induces failure, polls /decisions, scores RCA on 4 axes, regenerates monitoring-docs/chaos-report HTML.
 
 S3-HF-09 will extend the scorer with a 5th binary axis cited_injected_cause.
 
@@ -148,8 +148,8 @@ Story Points: 5
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO10 (sprint3-plan.md)",SCRUM Sprint 3,5,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-11,Daily audit feeds (static + live),Story,Done,Medium,RCA-Quality,"Two automated audit pipelines firing daily at 12:00 UTC.
+Cross-reference: US-3-CO10 (sprint3-plan.md)",SCRUM Sprint 3,5,1,Lina Laaraich,Lina Laaraich,08/May/26
+15,S3-CO-11: Daily audit feeds (static + live),Story,Done,Medium,RCA-Quality,"Two automated audit pipelines firing daily at 12:00 UTC.
 
 Static: Anthropic cloud /schedule routine, clones 6 repos, runs pytest + 8-section drift checklist, pushes audits/YYYY-MM-DD.md to private repo.
 
@@ -160,16 +160,16 @@ Story Points: 3
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO11 (sprint3-plan.md)",SCRUM Sprint 3,3,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-12,Audit repo migrations + history scrub,Story,Done,Low,RCA-Quality,"Three manual audit pages migrated from public monitoring-docs to private monitoring-audit-results: rca-quality-audit, full-sweep audit, HighP95Latency investigation. SESSION_HANDOFF.md history scrubbed from public monitoring-docs via git filter-repo.
+Cross-reference: US-3-CO11 (sprint3-plan.md)",SCRUM Sprint 3,3,1,Lina Laaraich,Lina Laaraich,08/May/26
+16,S3-CO-12: Audit repo migrations + history scrub,Story,Done,Low,RCA-Quality,"Three manual audit pages migrated from public monitoring-docs to private monitoring-audit-results: rca-quality-audit, full-sweep audit, HighP95Latency investigation. SESSION_HANDOFF.md history scrubbed from public monitoring-docs via git filter-repo.
 
 ---
 Story Points: 2
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO12 (sprint3-plan.md)",SCRUM Sprint 3,2,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-CO-13,Codify policy.py + bypass_llm.yaml,Story,To Do,Low,RCA-Quality,"Cleanup-only: extract the existing rule/LLM ordering into an explicit app/policy.py with three labeled branches (rule-bypass, rule+LLM, LLM-only fallback) and a bypass_llm.yaml of high-confidence patterns where deterministic action is sufficient. Behavior unchanged -- code organization only.
+Cross-reference: US-3-CO12 (sprint3-plan.md)",SCRUM Sprint 3,2,1,Lina Laaraich,Lina Laaraich,08/May/26
+17,S3-CO-13: Codify policy.py + bypass_llm.yaml,Story,To Do,Low,RCA-Quality,"Cleanup-only: extract the existing rule/LLM ordering into an explicit app/policy.py with three labeled branches (rule-bypass, rule+LLM, LLM-only fallback) and a bypass_llm.yaml of high-confidence patterns where deterministic action is sufficient. Behavior unchanged -- code organization only.
 
 ---
 Story Points: 1
@@ -177,8 +177,8 @@ Estimate: 0.25 day
 Epic: Epic 5 -- RCA Quality v2 (close-out)
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
-Cross-reference: US-3-CO13 (sprint3-plan.md)",SCRUM Sprint 3,1,EPIC5,Lina Laaraich,Lina Laaraich,08/May/26
-S3-FB-01,Extend feedback schema + endpoint + 4 MCP tools,Story,To Do,High,Feedback,"As an operator, I need to thumbs-up/down individual decisions and tag what was wrong, so future RCAs can learn from my feedback.
+Cross-reference: US-3-CO13 (sprint3-plan.md)",SCRUM Sprint 3,1,1,Lina Laaraich,Lina Laaraich,08/May/26
+18,S3-FB-01: Extend feedback schema + endpoint + 4 MCP tools,Story,To Do,High,Feedback,"As an operator, I need to thumbs-up/down individual decisions and tag what was wrong, so future RCAs can learn from my feedback.
 
 Approach: extend the existing US-5.3 feedback table -- do NOT create v2. Adds operator-quality-vote alongside the existing override/confirm behavioral signal.
 
@@ -210,8 +210,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.1 (sprint3-plan.md)
 Blocks: S3-FB-02
-Blocked by: (none)",SCRUM Sprint 3,4,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
-S3-FB-02,Operator rating UI,Story,To Do,High,Feedback,"As an operator, I need a minimal web form to thumbs-up/down a decision and add a tag/comment, so I can give feedback in 10 seconds without leaving the email or dashboard.
+Blocked by: (none)",SCRUM Sprint 3,4,2,Lina Laaraich,Lina Laaraich,08/May/26
+19,S3-FB-02: Operator rating UI,Story,To Do,High,Feedback,"As an operator, I need a minimal web form to thumbs-up/down a decision and add a tag/comment, so I can give feedback in 10 seconds without leaving the email or dashboard.
 
 Acceptance Criteria:
 - Vanilla-JS form (no framework) at app/static/rate.html
@@ -233,8 +233,8 @@ Epic: Epic 6 -- Operator feedback loop
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.2 (sprint3-plan.md)
-Blocked by: S3-FB-01",SCRUM Sprint 3,2,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
-S3-FB-03,Feedback observability,Story,To Do,Medium,Feedback,"As an SRE, I need Prometheus metrics + a Grafana panel for feedback volume so I can see whether operators are actually rating decisions.
+Blocked by: S3-FB-01",SCRUM Sprint 3,2,2,Lina Laaraich,Lina Laaraich,08/May/26
+20,S3-FB-03: Feedback observability,Story,To Do,Medium,Feedback,"As an SRE, I need Prometheus metrics + a Grafana panel for feedback volume so I can see whether operators are actually rating decisions.
 
 Acceptance Criteria:
 - New Prometheus metrics in app/metrics.py:
@@ -254,8 +254,8 @@ Epic: Epic 6 -- Operator feedback loop
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.5 (sprint3-plan.md)
-Blocked by: S3-FB-01 (needs the metrics)",SCRUM Sprint 3,1,EPIC6,Lina Laaraich,Lina Laaraich,08/May/26
-S3-DR-01,Scheduled snapshots + boot-time restore,Story,To Do,High,Drain3,"As a platform engineer, I need the Drain3 baseline to survive pod restarts and replicate to S3 on a schedule, so a fresh pod doesn't have to relearn templates from scratch.
+Blocked by: S3-FB-01 (needs the metrics)",SCRUM Sprint 3,1,2,Lina Laaraich,Lina Laaraich,08/May/26
+21,S3-DR-01: Scheduled snapshots + boot-time restore,Story,To Do,High,Drain3,"As a platform engineer, I need the Drain3 baseline to survive pod restarts and replicate to S3 on a schedule, so a fresh pod doesn't have to relearn templates from scratch.
 
 Acceptance Criteria:
 - app/config.py additions:
@@ -280,8 +280,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.6 (sprint3-plan.md)
 Blocks: S3-DR-02
-Blocked by: (none) -- S3 functions already exist",SCRUM Sprint 3,3,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
-S3-DR-02,Operator-facing Drain3 endpoints,Story,To Do,Medium,Drain3,"As an on-call engineer, I need three buttons -- ""snapshot now"", ""this is healthy, save it"", ""restore the last known-good"" -- so I can manage the Drain3 baseline without SSH or AWS console.
+Blocked by: (none) -- S3 functions already exist",SCRUM Sprint 3,3,3,Lina Laaraich,Lina Laaraich,08/May/26
+22,S3-DR-02: Operator-facing Drain3 endpoints,Story,To Do,Medium,Drain3,"As an on-call engineer, I need three buttons -- ""snapshot now"", ""this is healthy, save it"", ""restore the last known-good"" -- so I can manage the Drain3 baseline without SSH or AWS console.
 
 Acceptance Criteria:
 - Three new HTTP endpoints on the triage service:
@@ -301,8 +301,8 @@ Epic: Epic 7 -- Drain3 baseline lifecycle
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.7 (sprint3-plan.md)
-Blocked by: S3-DR-01",SCRUM Sprint 3,2,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
-S3-DR-03,IAM policy + Grafana visibility for Drain3 S3,Story,To Do,Low,Drain3,"As an SRE, I need a Grafana panel showing snapshot age so I can see at a glance whether the baseline is fresh.
+Blocked by: S3-DR-01",SCRUM Sprint 3,2,3,Lina Laaraich,Lina Laaraich,08/May/26
+23,S3-DR-03: IAM policy + Grafana visibility for Drain3 S3,Story,To Do,Low,Drain3,"As an SRE, I need a Grafana panel showing snapshot age so I can see at a glance whether the baseline is fresh.
 
 Acceptance Criteria:
 - IAM policy update on existing cires-observability-demo-* bucket: grant s3:PutObject + s3:GetObject + s3:ListBucket to the laptop's IAM principal (or static access-key IAM user used by the triage service)
@@ -319,8 +319,8 @@ Epic: Epic 7 -- Drain3 baseline lifecycle
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.8 (sprint3-plan.md)
-Blocked by: S3-DR-01, S3-DR-02",SCRUM Sprint 3,1,EPIC7,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-01,Tier 0 -- F-4 clamp strips actions + emits diagnostic_steps,Story,Done,Highest,Hallucination-Firewall,"As an SRE, I need the F-4 confidence clamp to strip templated/untrustworthy suggested_actions and replace them with read-only diagnostic verbs, so a clamped 0.40 decision can never email kubectl rollout/scale/set commands.
+Blocked by: S3-DR-01, S3-DR-02",SCRUM Sprint 3,1,3,Lina Laaraich,Lina Laaraich,08/May/26
+24,S3-HF-01: Tier 0 -- F-4 clamp strips actions + emits diagnostic_steps,Story,Done,Highest,Hallucination-Firewall,"As an SRE, I need the F-4 confidence clamp to strip templated/untrustworthy suggested_actions and replace them with read-only diagnostic verbs, so a clamped 0.40 decision can never email kubectl rollout/scale/set commands.
 
 Trigger: 2026-04-29 HighKongP95Latency 0b215ef3 incident emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot at 0.40 confidence. F-4 had clamped confidence but did NOT strip the bad actions.
 
@@ -349,8 +349,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.9 (sprint3-plan.md)
 Tier: 0 (immediate stop-the-bleeding)
-Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,29/Apr/26
-S3-HF-02,Defensive tests for HighKongP95Latency template lookup,Story,Done,Highest,Hallucination-Firewall,"Originally framed as ""bug: HighKongP95Latency wrong-archetype lookup"" after the 0b215ef3 incident emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot. Investigation 2026-04-29 confirmed the template lookup is FINE: HighKongP95Latency rule at suggested_actions.yaml line 133 returns Kong-targeting actions; the OOMKill template at line 64-77 only matches ^(High|Medium|Critical)MemoryUsage$. The bad 0b215ef3 actions came from the LLM directly (decision.suggested_actions was non-empty so fill_template never fired).
+Blocked by: (none)",SCRUM Sprint 3,1,4,Lina Laaraich,Lina Laaraich,29/Apr/26
+25,S3-HF-02: Defensive tests for HighKongP95Latency template lookup,Story,Done,Highest,Hallucination-Firewall,"Originally framed as ""bug: HighKongP95Latency wrong-archetype lookup"" after the 0b215ef3 incident emailed kubectl set resources --limits=memory=2Gi + kubectl rollout restart deploy/spring-boot. Investigation 2026-04-29 confirmed the template lookup is FINE: HighKongP95Latency rule at suggested_actions.yaml line 133 returns Kong-targeting actions; the OOMKill template at line 64-77 only matches ^(High|Medium|Critical)MemoryUsage$. The bad 0b215ef3 actions came from the LLM directly (decision.suggested_actions was non-empty so fill_template never fired).
 
 Reframed as defensive tests: pin the regex boundary so future YAML edits can't introduce wrong-archetype keying. Actual remediation for LLM-side bad actions lives in S3-HF-01 (Tier 0 strip).
 
@@ -371,8 +371,8 @@ Epic: Epic 8 -- Hallucination firewall + trace depth
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.10 (sprint3-plan.md)
-Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,29/Apr/26
-S3-HF-03,Tier 2 -- Hypothesis-menu validator + cause-evidence rule,Story,To Do,High,Hallucination-Firewall,"As an SRE, I need the validator to reject RCAs that list possibilities without committing (""possibly X or Y"", ""may be due to"") and RCAs whose named cause shares no token with the evidence list, so the LLM is forced to commit to one diagnosis or admit data starvation.
+Blocked by: (none)",SCRUM Sprint 3,1,4,Lina Laaraich,Lina Laaraich,29/Apr/26
+26,S3-HF-03: Tier 2 -- Hypothesis-menu validator + cause-evidence rule,Story,To Do,High,Hallucination-Firewall,"As an SRE, I need the validator to reject RCAs that list possibilities without committing (""possibly X or Y"", ""may be due to"") and RCAs whose named cause shares no token with the evidence list, so the LLM is forced to commit to one diagnosis or admit data starvation.
 
 Acceptance Criteria:
 - Add _HYPOTHESIS_MENU_PATTERNS to app/response_validator.py:
@@ -397,8 +397,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.11 (sprint3-plan.md)
 Tier: 2 (validator backstop)
-Blocked by: (none)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-04,MCP integrity -- Route entity_baselines through prometheus_mcp,Story,To Do,High,Hallucination-Firewall,"As an architect, I need every Prometheus query the LLM sees to flow through prometheus_mcp -- not direct httpx calls -- so the MCP-only invariant (the hallucination firewall) holds without exception.
+Blocked by: (none)",SCRUM Sprint 3,2,4,Lina Laaraich,Lina Laaraich,08/May/26
+27,S3-HF-04: MCP integrity -- Route entity_baselines through prometheus_mcp,Story,To Do,High,Hallucination-Firewall,"As an architect, I need every Prometheus query the LLM sees to flow through prometheus_mcp -- not direct httpx calls -- so the MCP-only invariant (the hallucination firewall) holds without exception.
 
 Trigger: app/entity_baselines.py:144 calls httpx.AsyncClient.get(prometheus_url + ""/api/v1/query"") directly. Found 2026-04-29 during 0b215ef3 incident analysis as one of three MCP-bypass code paths.
 
@@ -421,8 +421,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.12 (sprint3-plan.md)
 Blocks: S3-CO-02 (verification dependency)
-Blocked by: (none)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-05,MCP integrity -- Route bounded_agency rca_history through MCP,Story,To Do,High,Hallucination-Firewall,"As an architect, I need bounded_agency.py to route ALL its data lookups through MCP servers -- no direct DB queries, no in-process module imports -- so the LLM never sees data that didn't pass through the hallucination firewall.
+Blocked by: (none)",SCRUM Sprint 3,1,4,Lina Laaraich,Lina Laaraich,08/May/26
+28,S3-HF-05: MCP integrity -- Route bounded_agency rca_history through MCP,Story,To Do,High,Hallucination-Firewall,"As an architect, I need bounded_agency.py to route ALL its data lookups through MCP servers -- no direct DB queries, no in-process module imports -- so the LLM never sees data that didn't pass through the hallucination firewall.
 
 Trigger: app/bounded_agency.py:222-242 currently:
 - rca_history.similar -> direct store.get_recent_decisions_for_alert() (DB)
@@ -446,8 +446,8 @@ Epic: Epic 8 -- Hallucination firewall + trace depth
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.13 (sprint3-plan.md)
-Blocked by: S3-HF-06 (needs new MCP tools)",SCRUM Sprint 3,1,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-06,Quality-rated rca_history MCP tools,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need MCP tools that filter past decisions by quality + confidence, so I can prefer high-rated similar decisions and learn from low-rated ones.
+Blocked by: S3-HF-06 (needs new MCP tools)",SCRUM Sprint 3,1,4,Lina Laaraich,Lina Laaraich,08/May/26
+29,S3-HF-06: Quality-rated rca_history MCP tools,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need MCP tools that filter past decisions by quality + confidence, so I can prefer high-rated similar decisions and learn from low-rated ones.
 
 Combined with S3-FB-01's planned MCP additions to land in one cohesive rca_history_mcp PR.
 
@@ -470,8 +470,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.14 (sprint3-plan.md)
 Blocks: S3-HF-05 (MCP-integrity refactor depends on these tools)
-Blocked by: S3-FB-01 (feedback table schema must exist first for low-rated tool)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-07,Tier 1 -- Deeper trace gather via get_trace MCP,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need to see span-level trace details (operation, db.statement, http.target, error tags) when a latency alert fires, not just service-boundary span summaries -- so I can name a specific cause inside the slow service instead of producing a hypothesis menu.
+Blocked by: S3-FB-01 (feedback table schema must exist first for low-rated tool)",SCRUM Sprint 3,2,4,Lina Laaraich,Lina Laaraich,08/May/26
+30,S3-HF-07: Tier 1 -- Deeper trace gather via get_trace MCP,Story,To Do,High,Hallucination-Firewall,"As the LLM, I need to see span-level trace details (operation, db.statement, http.target, error tags) when a latency alert fires, not just service-boundary span summaries -- so I can name a specific cause inside the slow service instead of producing a hypothesis menu.
 
 Trigger: 0b215ef3 RCA correctly identified ""Kong span 3ms vs upstream span 8200ms"" but couldn't name what was slow inside spring-boot. The pipeline never called the existing jaeger_mcp /tools/get_trace endpoint -- it stops at find_traces summary.
 
@@ -497,8 +497,8 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.15 (sprint3-plan.md)
 Tier: 1 (the structural fix)
-Blocked by: (none) -- get_trace MCP endpoint already exists",SCRUM Sprint 3,3,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-08,MCP integrity -- CI lint forbidding direct data access,Story,To Do,High,Hallucination-Firewall,"As an architect, I need a CI check that fails any PR adding direct httpx/requests/aiosqlite calls outside the MCP boundaries, so the MCP-only invariant survives team turnover.
+Blocked by: (none) -- get_trace MCP endpoint already exists",SCRUM Sprint 3,3,4,Lina Laaraich,Lina Laaraich,08/May/26
+31,S3-HF-08: MCP integrity -- CI lint forbidding direct data access,Story,To Do,High,Hallucination-Firewall,"As an architect, I need a CI check that fails any PR adding direct httpx/requests/aiosqlite calls outside the MCP boundaries, so the MCP-only invariant survives team turnover.
 
 Acceptance Criteria:
 - Add CI check (ruff custom rule, semgrep pattern, or grep-based pre-commit) forbidding httpx/requests/aiosqlite/raw-SQL calls outside allowed boundaries:
@@ -519,8 +519,8 @@ Epic: Epic 8 -- Hallucination firewall + trace depth
 Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.16 (sprint3-plan.md)
-Blocked by: S3-HF-04, S3-HF-05 (so the lint doesn't fire on existing offenders)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
-S3-HF-09,Tier 4 -- Chaos scorer 5th axis + corpus seed + CI gate,Story,To Do,Medium,Hallucination-Firewall,"As an SRE, I need a binary ""did the RCA name the actual injected cause?"" score on every chaos run, plus a CI regression gate against a seeded corpus of bad decisions, so Sprint 4's Tier 3 agentic loop can be measured rather than shipped blind.
+Blocked by: S3-HF-04, S3-HF-05 (so the lint doesn't fire on existing offenders)",SCRUM Sprint 3,2,4,Lina Laaraich,Lina Laaraich,08/May/26
+32,S3-HF-09: Tier 4 -- Chaos scorer 5th axis + corpus seed + CI gate,Story,To Do,Medium,Hallucination-Firewall,"As an SRE, I need a binary ""did the RCA name the actual injected cause?"" score on every chaos run, plus a CI regression gate against a seeded corpus of bad decisions, so Sprint 4's Tier 3 agentic loop can be measured rather than shipped blind.
 
 Why this must land BEFORE Sprint 4's Tier 3: Tier 3 (iterative agentic loop with hypothesis-tree state) is a high-cost high-risk change. Without a binary metric and a corpus regression gate, Tier 3 ships unmeasured. Tier 4 is the scoreboard.
 
@@ -546,4 +546,4 @@ Sprint: SCRUM Sprint 3
 Due date: 8 May 2026
 Cross-reference: US-3.17 (sprint3-plan.md)
 Tier: 4 (measurement scaffold for Sprint 4 Tier 3)
-Blocked by: S3-HF-03 (validator must catch the corpus seed's expected_violations)",SCRUM Sprint 3,2,EPIC8,Lina Laaraich,Lina Laaraich,08/May/26
+Blocked by: S3-HF-03 (validator must catch the corpus seed's expected_violations)",SCRUM Sprint 3,2,4,Lina Laaraich,Lina Laaraich,08/May/26
