@@ -31,16 +31,32 @@ SPRINT_NAME = "SCRUM Sprint 4"
 SPRINT_DUE = "03/Jun/26"
 P2_SHIPPED_DUE = "19/May/26"  # P2 hotfix already shipped — historical due date
 
+# NOTE: 11-column format for Sprint 4 (down from Sprint 3's 13).
+#
+# Sprint 3 used the canonical 13-column shape including Sprint + Story Points,
+# both of which Jira's importer silently DROPPED at import time. By 2026-05-20
+# the importer has been tightened: it now ERRORS on those two columns instead
+# of dropping them silently ("Sprint id must be a number" + "Custom Field
+# 'Story Points' is not associated with issue type 'Story'"). Since they were
+# always going to be bulk-edited post-import anyway (see SPRINT4-README.md
+# §Phase 4), we omit them from the CSV.
 HEADERS = [
     "Work item Id", "Summary", "Work type", "Status", "Priority",
-    "Labels", "Description", "Sprint", "Story Points",
+    "Labels", "Description",
     "Parent", "Reporter", "Assignee", "Due date",
 ]
 
 # Epic Work Item IDs inside this CSV
-EPIC9_ID = "1"
-EPIC10_ID = "2"
-EPIC11_ID = "3"
+#
+# IMPORTANT: Jira's CSV importer treats numeric Work Item Ids as PERSISTENT
+# per project when the import-screen field-mapping uses "Work item Id" (the
+# parent-linkage field, not "Work item Key"). Sprint 3 used IDs 1..32, so any
+# CSV id in that range collides with Sprint 3's mapped issues and triggers
+# update-mode (Jira reports them as "already exist, skipped"). Start Sprint 4
+# at 100 to leave a comfortable buffer for any future Sprint-3 backfills.
+EPIC9_ID = "100"
+EPIC10_ID = "101"
+EPIC11_ID = "102"
 
 
 def desc(body: str, p_tag: str, evidence: str, gate: str,
@@ -91,7 +107,7 @@ EPICS = [
             "6 (P5 Drain3+empty-actions auto-downgrade), 15 (P7 dashboard colour)",
             "S4-LAT-01, S4-LAT-02, S4-LAT-03, S4-LAT-04",
         ),
-        "Sprint": SPRINT_NAME, "Story Points": "", "Parent": "",
+        "Parent": "",
         "Reporter": USER, "Assignee": "", "Due date": SPRINT_DUE,
     },
     {
@@ -113,7 +129,7 @@ EPICS = [
             "9 (P8 corpus reclassify), 11 (P6 exemplar prose rewrites)",
             "S4-PR-01, S4-PR-02, S4-PR-03, S4-PR-04, S4-PR-05, S4-PR-06",
         ),
-        "Sprint": SPRINT_NAME, "Story Points": "", "Parent": "",
+        "Parent": "",
         "Reporter": USER, "Assignee": "", "Due date": SPRINT_DUE,
     },
     {
@@ -137,7 +153,7 @@ EPICS = [
             "22 (L2/L3 chaos), 23 (Drain3 self-mon allowlist), 24 (doc debt)",
             "S4-CR-01 through S4-CR-14",
         ),
-        "Sprint": SPRINT_NAME, "Story Points": "", "Parent": "",
+        "Parent": "",
         "Reporter": USER, "Assignee": "", "Due date": SPRINT_DUE,
     },
 ]
@@ -496,7 +512,7 @@ STORIES = [
 def main():
     rows = list(EPICS)
 
-    next_id = 4  # epics consumed 1, 2, 3
+    next_id = 103  # epics consumed 100, 101, 102
     for code, summary_tail, status, priority, parent_id, p_tag, sp, body, evidence, gate, history_row, due_override in STORIES:
         rows.append({
             "Work item Id": str(next_id),
@@ -507,9 +523,8 @@ def main():
             "Labels": {EPIC9_ID: "Latency", EPIC10_ID: "RCA-Prose", EPIC11_ID: "Correlation"}[parent_id],
             "Description": desc(body, p_tag, evidence, gate, history_row,
                                 cross_ref=f"Cross-reference: sprint-history.html row {history_row}; "
-                                          f"FYP report Chapter 11 table row {history_row}"),
-            "Sprint": SPRINT_NAME,
-            "Story Points": sp,
+                                          f"FYP report Chapter 11 table row {history_row}. "
+                                          f"Story Points (bulk-edit post-import): {sp}."),
             "Parent": parent_id,
             "Reporter": USER,
             "Assignee": USER,

@@ -1,6 +1,9 @@
 # Sprint 4 Additions — Manual Steps
 
-This README accompanies `Sprint4-additions.csv` and `generate_sprint4_additions.py`. Mirrors the Sprint 3 import process — same 13-column format, same gotchas (Sprint, Story Points, Due date silently dropped by the importer; numeric Work Item IDs required).
+This README accompanies `Sprint4-additions.csv` and `generate_sprint4_additions.py`. Mirrors the Sprint 3 import process with **two corrections** versus the Sprint 3 template (both verified the hard way on 2026-05-20):
+
+1. **Work Item IDs start at 100, not 1.** Jira's CSV importer treats `Work item Id` as persistent per-project — Sprint 3's import used IDs 1–32, so reusing 1–27 for Sprint 4 caused 25-of-27 to be matched as updates against Sprint 3's already-imported issues. Sprint 4 IDs are 100–126.
+2. **CSV is now 11 columns, not 13.** Jira's importer was tightened between 2026-04-29 (Sprint 3 import) and 2026-05-20: `Sprint` and `Story Points` columns now throw hard errors ("Sprint id must be a number" / "Custom Field Story Points is not associated with issue type Story") instead of being silently dropped. They're omitted from the CSV; the per-row Story Points value still lives in the Description's metadata footer for cross-check and is also in the bulk-edit table below.
 
 ## TL;DR
 
@@ -72,37 +75,39 @@ Per the Sprint 3 lesson (`SPRINT3-README.md` §Step 2), Jira's CSV importer sile
 2. Multi-select all 27 → "Move to Sprint" → choose **SCRUM Sprint 4**.
 3. Story Points and Due date still need per-row updates. Use the per-story values below (copy-paste in batches of 5–10):
 
-### Bulk-edit table — Story Points + Due date
+### Bulk-edit table — Sprint + Story Points + Due date
 
-| Work Item Id | Code | Status | Story Points | Due date |
+(Sprint column is also missing because Jira errors on the textual name — bulk-assign Sprint = `SCRUM Sprint 4` to all 27 imported rows in one multi-select action.)
+
+| CSV Work Item Id | Code | Status | Story Points | Due date |
 |---|---|---|---|---|
-| 1 | EPIC9 | To Do | (epic — no SP) | 03/Jun/26 |
-| 2 | EPIC10 | To Do | (epic — no SP) | 03/Jun/26 |
-| 3 | EPIC11 | To Do | (epic — no SP) | 03/Jun/26 |
-| 4 | S4-LAT-01 | To Do | 5 | 03/Jun/26 |
-| 5 | S4-LAT-02 | **Done** | 2 | **19/May/26** (shipped) |
-| 6 | S4-LAT-03 | To Do | 2 | 03/Jun/26 |
-| 7 | S4-LAT-04 | To Do | 2 | 03/Jun/26 |
-| 8 | S4-PR-01 | To Do | 3 | 03/Jun/26 |
-| 9 | S4-PR-02 | To Do | 5 | 03/Jun/26 |
-| 10 | S4-PR-03 | To Do | 3 | 03/Jun/26 |
-| 11 | S4-PR-04 | To Do | 1 | 03/Jun/26 |
-| 12 | S4-PR-05 | To Do | 3 | 03/Jun/26 |
-| 13 | S4-PR-06 | To Do | 5 | 03/Jun/26 |
-| 14 | S4-CR-01 | To Do | 8 | 03/Jun/26 |
-| 15 | S4-CR-02 | To Do | 5 | 03/Jun/26 |
-| 16 | S4-CR-03 | To Do | 13 | 03/Jun/26 |
-| 17 | S4-CR-04 | To Do | 5 | 03/Jun/26 |
-| 18 | S4-CR-05 | To Do | 3 | 03/Jun/26 |
-| 19 | S4-CR-06 | To Do | 1 | 03/Jun/26 |
-| 20 | S4-CR-07 | To Do | 1 | 03/Jun/26 |
-| 21 | S4-CR-08 | To Do | 5 | 03/Jun/26 |
-| 22 | S4-CR-09 | To Do | 2 | 03/Jun/26 |
-| 23 | S4-CR-10 | To Do | 3 | 03/Jun/26 |
-| 24 | S4-CR-11 | To Do | 3 | 03/Jun/26 |
-| 25 | S4-CR-12 | To Do | 5 | 03/Jun/26 |
-| 26 | S4-CR-13 | To Do | 1 | 03/Jun/26 |
-| 27 | S4-CR-14 | To Do | 2 | 03/Jun/26 |
+| 100 | EPIC9 | To Do | (epic — no SP) | 03/Jun/26 |
+| 101 | EPIC10 | To Do | (epic — no SP) | 03/Jun/26 |
+| 102 | EPIC11 | To Do | (epic — no SP) | 03/Jun/26 |
+| 103 | S4-LAT-01 | To Do | 5 | 03/Jun/26 |
+| 104 | S4-LAT-02 | **Done** | 2 | **19/May/26** (shipped) |
+| 105 | S4-LAT-03 | To Do | 2 | 03/Jun/26 |
+| 106 | S4-LAT-04 | To Do | 2 | 03/Jun/26 |
+| 107 | S4-PR-01 | To Do | 3 | 03/Jun/26 |
+| 108 | S4-PR-02 | To Do | 5 | 03/Jun/26 |
+| 109 | S4-PR-03 | To Do | 3 | 03/Jun/26 |
+| 110 | S4-PR-04 | To Do | 1 | 03/Jun/26 |
+| 111 | S4-PR-05 | To Do | 3 | 03/Jun/26 |
+| 112 | S4-PR-06 | To Do | 5 | 03/Jun/26 |
+| 113 | S4-CR-01 | To Do | 8 | 03/Jun/26 |
+| 114 | S4-CR-02 | To Do | 5 | 03/Jun/26 |
+| 115 | S4-CR-03 | To Do | 13 | 03/Jun/26 |
+| 116 | S4-CR-04 | To Do | 5 | 03/Jun/26 |
+| 117 | S4-CR-05 | To Do | 3 | 03/Jun/26 |
+| 118 | S4-CR-06 | To Do | 1 | 03/Jun/26 |
+| 119 | S4-CR-07 | To Do | 1 | 03/Jun/26 |
+| 120 | S4-CR-08 | To Do | 5 | 03/Jun/26 |
+| 121 | S4-CR-09 | To Do | 2 | 03/Jun/26 |
+| 122 | S4-CR-10 | To Do | 3 | 03/Jun/26 |
+| 123 | S4-CR-11 | To Do | 3 | 03/Jun/26 |
+| 124 | S4-CR-12 | To Do | 5 | 03/Jun/26 |
+| 125 | S4-CR-13 | To Do | 1 | 03/Jun/26 |
+| 126 | S4-CR-14 | To Do | 2 | 03/Jun/26 |
 
 Story Points also live in each ticket's Description metadata footer for cross-check.
 
