@@ -1,0 +1,263 @@
+Work item Id,Summary,Work type,Status,Priority,Labels,Description,Sprint,Story Points,Parent,Reporter,Assignee,Due date
+1,EPIC9: Sprint 4 -- Latency + suppression,Epic,To Do,Highest,Latency,"Close the latency gap between the laptop steady-state target (median <=90s, worst <=240s) and the observed reality (median 6-7 min, worst 23 min on 2026-05-19 live load). Also closes the P2 suppression cascade (already shipped 2026-05-19 -- backfilled as Done story for audit trail) and the dashboard 'dismiss with recommendation' colour gap (P7).
+
+Stories in this epic: S4-LAT-01, S4-LAT-02, S4-LAT-03, S4-LAT-04
+Items from the 24-item ranked list (sprint-history.html): 1 (P0+P9 latency bundle), 2 (P2 suppression cascade -- DONE), 6 (P5 Drain3+empty-actions auto-downgrade), 15 (P7 dashboard colour)
+
+Acceptance: all child stories Done by sprint end (2026-06-03), or carried with explicit rationale.",SCRUM Sprint 4,,,Lina Laaraich,,03/Jun/26
+2,EPIC10: Sprint 4 -- RCA prose honesty,Epic,To Do,High,RCA-Prose,"Close the gap between RCA-prose intent (cause-first, evidence-cited, no PromQL or raw floats in the lede) and the 2026-05-19 reality (Z-score equations and 16-digit floats appearing in cause prose; hallucinated metric names from truncation artifacts; word-for-word identical diagnostic_steps across distinct incidents).
+
+Stories in this epic: S4-PR-01, S4-PR-02, S4-PR-03, S4-PR-04, S4-PR-05, S4-PR-06
+Items from the 24-item ranked list (sprint-history.html): 3 (P1 PromQL scrubber), 4 (P3 deterministic diagnostic-steps), 7 (P4 truncated-name hallucination), 8 (P11 tighter classifier), 9 (P8 corpus reclassify), 11 (P6 exemplar prose rewrites)
+
+Acceptance: all child stories Done by sprint end (2026-06-03), or carried with explicit rationale.",SCRUM Sprint 4,,,Lina Laaraich,,03/Jun/26
+3,EPIC11: Sprint 4 -- Correlation + retrieval + carry,Epic,To Do,Medium,Correlation,"Absorbs the long-tail Sprint 4 backlog: the incident correlator (US-5.2 carry from Sprint 2), the MCP native tool-calling rewrite (GPU-gate removed 2026-05-19), Tier 3 iterative agentic gather (now unblocked by S3-HF-09 Tier 4 scoreboard), curated RAG + weekly curation (deferred from Sprint 3), and resilience / polish items.
+
+Stories in this epic: S4-CR-01 through S4-CR-14
+Items from the 24-item ranked list (sprint-history.html): 5 (P10 US-5.2 correlator), 10 (MCP native tool-calling), 12 (Tier 3), 13 (curated RAG), 14 (weekly curation), 16 (pod-alert fixes), 17 (O-9+O-10), 18 (sentence-transformers), 19 (trace-ID linkage), 20 (RCA playbook), 21 (US-5.7 corpus), 22 (L2/L3 chaos), 23 (Drain3 self-mon allowlist), 24 (doc debt)
+
+Acceptance: all child stories Done by sprint end (2026-06-03), or carried with explicit rationale.",SCRUM Sprint 4,,,Lina Laaraich,,03/Jun/26
+4,S4-LAT-01: Latency bundle -- 180s pipeline timeout + per-stage instrumentation + Ollama concurrency cap,Story,To Do,Highest,Latency,"Three sub-tasks that compound to pull median RCA latency from ~6 min to ~90s on the laptop runner: (1) Ollama concurrency cap = 1 (serial queue, no GPU time-sharing); (2) hard 180s asyncio.wait_for around the pipeline entry, with raw-alert fallback on TimeoutError; (3) per-stage histogram triage_pipeline_duration_seconds{stage} across webhook-receive / context-gather / exemplar-match / LLM-call / validate / retry / persist / notify. Per-stage instrumentation was drafted in a scratch branch during the investigation window -- find and rebase rather than re-scaffold.
+
+Evidence (2026-05-19 live-load investigation): median 6-7 min, worst 23 min (PodHighMemoryUsage 2026-04-29); today's 2nd TargetDown took 16.7 min queued behind first; audit-live run #3 on 2026-05-20 hit the queue blowup again
+Gate: median investigation_duration_ms <= 90s, worst <= 240s, queue depth <= 3
+
+Cross-reference: sprint-history.html row 1; FYP report Chapter 11 table row 1
+
+---
+P-tag: P0+P9
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 1",SCRUM Sprint 4,5,1,Lina Laaraich,Lina Laaraich,03/Jun/26
+5,S4-LAT-02: P2: Suppression cascade fixes (synthetic-fingerprint filter + lookback 15->10 + recurrence-gate widening),Story,Done,High,Latency,"Three fixes shipped 2026-05-19, validated 2026-05-20 via 3-run audit-live gate:
+  (1) Synthetic-fingerprint filter in get_recent_decision_for_alert --       audit-live-* and chaos-* fingerprints never poison real       suppression cache. (monitoring-triage-service@b96bbde)
+  (2) TRIAGE_HISTORY_LOOKBACK_MINUTES 15 -> 10. (same commit)
+  (3) recurrence_gate annotation widened to HighP95Latency +       HighKongP95Latency. (monitoring-project@54b18df)
+Suite stepped 249 -> 252 with 3 new regression tests. Backfilled as a Done ticket for audit-trail completeness.
+
+Evidence (2026-05-19 live-load investigation): one synthetic dismiss at 13:32 silenced 4 real MediumCpuUsage fires through 13:41; one real dismiss at 13:54 silenced 3 TargetDown follow-ups through 14:07 (both observed 2026-05-19)
+Gate: 3-run audit-live gate: zero audit-live-* /decisions rows have triage_decision=triage_suppressed (CLOSED 2026-05-20 09:00 UTC)
+
+Cross-reference: sprint-history.html row 2; FYP report Chapter 11 table row 2
+
+---
+P-tag: P2
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 2",SCRUM Sprint 4,2,1,Lina Laaraich,Lina Laaraich,19/May/26
+6,S4-LAT-03: Drain3 + empty-actions auto-downgrade,Story,To Do,High,Latency,"Post-LLM gate: if verdict=escalate AND suggested_actions=[] AND no service named -> auto-downgrade to dismiss, prose preserved with the tag 'awaiting correlation'. For Drain3AnomalyDetected specifically, require >=2 novel templates in the same 5-min window before escalating (raise the per-alert threshold inside drain_analyzer.py).
+
+Evidence (2026-05-19 live-load investigation): 73784801 (2026-04-29) escalated for 'GET /robots.txt and Kong deprecation warnings' -- two unrelated observations, no causal connection, shelved actions. False page.
+Gate: for the 28-decision rerun: zero RCAs with verdict=escalate AND suggested_actions=[] AND no named cause; Drain3 escalations require the >=2-novel-templates condition
+
+Cross-reference: sprint-history.html row 6; FYP report Chapter 11 table row 6
+
+---
+P-tag: P5
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 6",SCRUM Sprint 4,2,1,Lina Laaraich,Lina Laaraich,03/Jun/26
+7,S4-LAT-04: Dashboard dismiss_with_recommendation colour,Story,To Do,Low,Latency,"New verdict bucket / colour at the dashboard layer: amber for 'dismiss but rule needs fixing' vs grey for 'dismiss, ignore'. Requires a schema migration on rca_history adding a dismiss_with_recommendation boolean (default false). Card legend in dashboard-guide.html updated.
+
+Evidence (2026-05-19 live-load investigation): 36c23530 (2026-05-19) was a correct dismiss with suggested actions targeting the alerting RULE for a static-threshold misfire. Operator skimming 'dismiss' missed the actions.
+Gate: dashboard renders amber for dismiss_with_recommendation=true; rca_history schema migration applied; >=1 verdict in the corpus carries the flag and renders correctly
+
+Cross-reference: sprint-history.html row 15; FYP report Chapter 11 table row 15
+
+---
+P-tag: P7
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 15",SCRUM Sprint 4,2,1,Lina Laaraich,Lina Laaraich,03/Jun/26
+8,S4-PR-01: PromQL & numerical-noise scrubber,Story,To Do,High,RCA-Prose,"New validator rule rejecting RCA prose containing: PromQL function calls, raw floats > 4 sig figs, Z-score equations, metric names ending in '...' (truncation artefacts). New translate_value(value, unit) helper pre-renders metric values BEFORE prompt assembly so the LLM cites 'CPU usage 6.72%' rather than '0.0015848932803859128'. Strip '# TYPE' / '# HELP' / '...truncated...' markers from context before LLM sees it.
+
+Evidence (2026-05-19 live-load investigation): RCAs literally contain 'Z-score: (6.72-6.3)/0.65 = +0.6 sigma', 'histogram_quantile(0.95) = 8203.846153846154 ms', 'sum by(le)(rate(http_server_requests_seconds_bucket{...}[5m]))' in cause-prose (sampled from 2026-05-19 live-load).
+Gate: audit script grep on last 50 RCAs returns zero hits on 'histogram_quantile|rate\(|sum by\(|\.\d{6,}|sigma'
+
+Cross-reference: sprint-history.html row 3; FYP report Chapter 11 table row 3
+
+---
+P-tag: P1
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 3",SCRUM Sprint 4,3,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+9,S4-PR-02: Deterministic diagnostic-steps generator,Story,To Do,High,RCA-Prose,"Move diagnostic-step generation OUT of the LLM into a deterministic helper app/diagnostic_steps_for_alert(alert, ctx) that templates from the actual gathered evidence: deep_trace trace_id, alert service, window timestamps, observed value. LLM still writes RCA prose + suggested_actions; diagnostic_steps become auto-generated from concrete IDs.
+
+Evidence (2026-05-19 live-load investigation): 111ded21 and a4555bdd (two different TargetDown fires on 2026-05-19) have word-for-word identical diagnostic_steps -- boilerplate not incident-specific
+Gate: two TargetDown RCAs from different fires have >=3 distinct diagnostic-step strings each (zero duplicates)
+
+Cross-reference: sprint-history.html row 4; FYP report Chapter 11 table row 4
+
+---
+P-tag: P3
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 4",SCRUM Sprint 4,5,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+10,S4-PR-03: Hallucination on truncated metric names,Story,To Do,High,RCA-Prose,"Context sanitiser drops any line ending in '(truncated)' or '...]' before LLM sees it. New validator cross-checks cited metric names in RCA prose against app/metrics.py + a known Prometheus exposition registry; rejects RCAs that invent metric names.
+
+Evidence (2026-05-19 live-load investigation): d763a9c9 (2026-04-29) invented cause 'metric \""jvm_threads_daem\"" not being updated correctly' -- jvm_threads_daem is the truncated form of jvm_threads_daemon. The LLM treated a string-truncation artefact as a real component name.
+Gate: validator rejects any RCA citing a metric name not in the Prometheus exposition registry; sanitiser drops truncated lines before prompt assembly
+
+Cross-reference: sprint-history.html row 7; FYP report Chapter 11 table row 7
+
+---
+P-tag: P4
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 7",SCRUM Sprint 4,3,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+11,S4-PR-04: Tighter _classify_rca_quality,Story,To Do,High,RCA-Prose,"New 'actionable' bar in app/rca_quality.py: requires (>=1 specific evidence item) AND (named cause in prose) AND (>=1 suggested action OR explicit 'dismiss with reasoning'). The old definition lets thin-evidence RCAs claim actionable; the new MCP get_similar_decisions(min_quality='actionable') is degraded by this.
+
+Evidence (2026-05-19 live-load investigation): 73784801 (Drain3 escalate with no cause), 36c23530 (a dismiss), a4555bdd (16-min on a 2-scrape blip) all tagged actionable -- the label has lost meaning
+Gate: rerunning _classify_rca_quality over the last 28 decisions demotes the three sample rows above to needs_review
+
+Cross-reference: sprint-history.html row 8; FYP report Chapter 11 table row 8
+
+---
+P-tag: P11
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 8",SCRUM Sprint 4,1,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+12,S4-PR-05: Corpus reclassification + nightly post-hoc validator,Story,To Do,Medium,RCA-Prose,"Two parts: (1) manual SQL fix to reclassify 0b215ef3 (the 2026-04-29 bad incident) to needs_review and clear its suggested_actions -- ~10 min; (2) nightly APScheduler job that re-runs the current validator over the last 7d of stored RCAs and demotes any that would now fail -- ~3-4 h. Depends on P11 (S4-PR-04) shipping first since the new classifier defines what 'would now fail' means.
+
+Evidence (2026-05-19 live-load investigation): 0b215ef3 is still in rca_history with quality=actionable + the wrong-archetype kubectl OOM remediations on a Kong p95 alert. The new get_similar_decisions(min_quality='actionable') returns it as a positive exemplar.
+Gate: 0b215ef3 carries quality=needs_review post-fix; nightly job has run >=1 cycle and the audit log shows demotions
+
+Cross-reference: sprint-history.html row 9; FYP report Chapter 11 table row 9
+
+---
+P-tag: P8
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 9",SCRUM Sprint 4,3,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+13,S4-PR-06: Exemplar prose rewrites + overlap-detection validator,Story,To Do,Medium,RCA-Prose,"Rewrite app/exemplars/library.yaml so each exemplar uses {INSTANCE}, {N}, {TIMESTAMP} placeholders the LLM must substitute with concrete values from gathered context. Add a validator regex: if RCA prose has >80% char overlap with the matched exemplar prose, trigger a retry.
+
+Evidence (2026-05-19 live-load investigation): 2026-05-19 TargetDown RCAs are near-identical to each other and to the exemplar prose -- too much template leakage, not enough adaptation
+Gate: two same-archetype RCAs from different fires have <80% char-overlap to each other and to the exemplar; validator catches >80% overlap and triggers retry
+
+Cross-reference: sprint-history.html row 11; FYP report Chapter 11 table row 11
+
+---
+P-tag: P6
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 11",SCRUM Sprint 4,5,2,Lina Laaraich,Lina Laaraich,03/Jun/26
+14,S4-CR-01: US-5.2 Incident correlator -- 4-alert kill-chain RCA collapsed into one email,Story,To Do,Medium,Correlation,"Real outages produce alert clusters; the cluster signature IS the signal. Add a 5-min/15-min co-occurrence detector at the webhook fan-in: when N alerts of related types fire within window W, collapse into a single 'incident' record and run one RCA against the cluster rather than N independent RCAs. Originally Sprint 2 Tier-1 priority; carried forward.
+
+Evidence (2026-05-19 live-load investigation): 4 MediumCpuUsage in 5 min + 4 TargetDown in 15 min on 2026-05-19, all treated independently. None said 'this is the 4th in 5 min -- pattern'.
+Gate: a synthetic 4-alert kill-chain produces ONE escalation email with the cluster signature in the subject, not four; the RCA prose names the shared upstream cause
+
+Cross-reference: sprint-history.html row 5; FYP report Chapter 11 table row 5
+
+---
+P-tag: P10
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 5",SCRUM Sprint 4,8,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+15,S4-CR-02: MCP native tool-calling rewrite,Story,To Do,Medium,Correlation,"Replace the prompt-engineered JSON-schema output path with native tool-calling (Ollama's tools API). Smaller prompts -> faster inference (compounds with S4-LAT-01 latency bundle). The GPU-migration gate was removed 2026-05-19 on cost grounds, so this proceeds on the laptop qwen2.5:7b directly. Originally sprint3-backlog #5.
+
+Evidence (2026-05-19 live-load investigation): current bounded-agency retry plus structured-output schema overhead adds ~30% to LLM round-trip latency on observed traces
+Gate: round-trip latency on a fixed prompt set drops >=20% vs. the structured-output path; suite still green
+
+Cross-reference: sprint-history.html row 10; FYP report Chapter 11 table row 10
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 10",SCRUM Sprint 4,5,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+16,S4-CR-03: Tier 3 -- Iterative agentic gather (3-iteration tool-call loop with hypothesis-tree state),Story,To Do,Low,Correlation,"Replaces the single-shot bounded_agency retry with a 3-iteration tool-call loop: each iteration produces a partial hypothesis tree the model expands on the next iteration. Hypothesis tree stored in the prompt as a structured section. Termination: confidence threshold reached, max-depth limit hit, or total latency budget exhausted. S3-HF-09 Tier 4 scoreboard now in place (shipped 2026-05-19) so the regression-gate dependency is satisfied.
+
+Evidence (2026-05-19 live-load investigation): single-shot bounded_agency is too constrained for data-starved cases (observed in multiple chaos runs)
+Gate: Tier 3 path is feature-flagged; chaos corpus regression gate (S3-HF-09) shows no quality regression at flag-on; latency-budget guard caps tail at 240s
+
+Cross-reference: sprint-history.html row 12; FYP report Chapter 11 table row 12
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 12",SCRUM Sprint 4,13,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+17,S4-CR-04: Curated RAG retrieval (BM25 over feedback-curated YAML),Story,To Do,Low,Correlation,"Once the Epic 2 feedback table has accumulated rated entries: BM25 retrieval over library_curated.yaml supplements the exemplar section with top-K=3 positive + K=2 anti-example matches. Was US-3.4 in Sprint 3 -- gated on feedback volume.
+
+Evidence (2026-05-19 live-load investigation): investigation-window dry-run showed BM25 over the 14-archetype BASE library is degenerate (top-1 always matched exemplars.find_for_alert); enriched library is the actual production scenario
+Gate: BM25 top-1 hit on a curated library of >=20 entries is different from exemplars.find_for_alert >=30% of the time on a held-out sample
+
+Cross-reference: sprint-history.html row 13; FYP report Chapter 11 table row 13
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 13",SCRUM Sprint 4,5,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+18,"S4-CR-05: Weekly curation job (APScheduler, Sundays 02:00 UTC)",Story,To Do,Low,Correlation,"APScheduler in-process job; reads the SQLite feedback table for the last 7d; entries above a quality threshold are written as YAML to library_curated.yaml. Was US-3.3 in Sprint 3 -- gated on feedback volume.
+
+Evidence (2026-05-19 live-load investigation): curated retrieval requires a curated source; the curation has to be automatic to stay fresh
+Gate: weekly job has run >=1 cycle in production; library_curated.yaml exists and contains >=20 entries
+
+Cross-reference: sprint-history.html row 14; FYP report Chapter 11 table row 14
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 14",SCRUM Sprint 4,3,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+19,S4-CR-06: Pod-level alert rule fixes (memory cgroup-churn + CPU label mismatch),Story,To Do,Low,Correlation,"Two query bugs noted at Sprint 3 ship time: (a) PodHighMemoryUsage cumulative expression doesn't aggregate across cgroup restarts -- container restart churn splits the timeseries; (b) PodHighCpuUsage has a label-mismatch between numerator/denominator. ~30 min each.
+
+Evidence (2026-05-19 live-load investigation): Sprint 3 chaos Run 4 (2026-04-28 PM) captured 0/2 for these alerts because of these query bugs
+Gate: both rules fire correctly in a fresh chaos run; PodHighMemoryUsage stays firing across a synthetic OOMKill loop
+
+Cross-reference: sprint-history.html row 16; FYP report Chapter 11 table row 16
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 16",SCRUM Sprint 4,1,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+20,S4-CR-07: O-9 webhook auth + O-10 nightly RCA-history S3 backup,Story,To Do,Medium,Correlation,"Friday-slot hardening, previously overdue: (a) O-9 -- HMAC signature validation on /webhook/grafana (rejects un-signed requests); (b) O-10 -- nightly mysqldump of rca_history -> s3://cires-observability-demo-*/backups/rca_history/YYYY-MM-DD.sql.gz with 30-day retention. ~30 min each.
+
+Evidence (2026-05-19 live-load investigation): webhook is open to any caller on the tailnet; rca_history has no off-site backup -- single PVC failure = total decision-corpus loss
+Gate: /webhook/grafana rejects unsigned requests with 401; s3://.../backups/rca_history/ has >=1 .sql.gz from the last 24h
+
+Cross-reference: sprint-history.html row 17; FYP report Chapter 11 table row 17
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 17",SCRUM Sprint 4,1,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+21,S4-CR-08: Sentence-transformers retriever (RAG fallback),Story,To Do,Low,Correlation,"Only if BM25 (S4-CR-04) underperforms in A/B against the curated library. Adds sentence-transformers/all-MiniLM-L6-v2 as an alternate retriever; quality-graded fallback when BM25 misses.
+
+Evidence (2026-05-19 live-load investigation): BM25 is a coarse retriever; curated YAML is small but heterogeneous -- semantic similarity might beat lexical overlap on near-misses
+Gate: A/B over the 28-decision sample: sentence-transformers vs BM25 top-K=3; pick the winner. SKIP if BM25 is the winner.
+
+Cross-reference: sprint-history.html row 18; FYP report Chapter 11 table row 18
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 18",SCRUM Sprint 4,5,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+22,S4-CR-09: Trace-ID linkage from log anomalies,Story,To Do,Low,Correlation,"When a Drain3 anomaly fires, scan the affected log lines for trace_id patterns and jump to the corresponding Jaeger trace for richer context. Originally sprint3-backlog #2a.
+
+Evidence (2026-05-19 live-load investigation): log anomalies and trace anomalies are currently two parallel streams; linking them surfaces the underlying request boundary
+Gate: for log lines containing a trace_id, the RCA carries a deep_trace field with the matched trace_id (>=80% extraction success in test corpus)
+
+Cross-reference: sprint-history.html row 19; FYP report Chapter 11 table row 19
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 19",SCRUM Sprint 4,2,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+23,S4-CR-10: RCA playbook templates,Story,To Do,Low,Correlation,"Per-alert-type playbook templates that the LLM populates rather than free-forms. Originally sprint3-backlog #2b. Complements Epic 2 feedback work -- rated playbooks become the curation source.
+
+Evidence (2026-05-19 live-load investigation): current RCA prose is free-form against an exemplar; structured playbooks would constrain hallucination further on common alert types
+Gate: >=4 playbook templates exist for the most-common alert types; LLM uses them when the alert type matches; chaos run scores >=0.85 mean cause-named on those alert types
+
+Cross-reference: sprint-history.html row 20; FYP report Chapter 11 table row 20
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 20",SCRUM Sprint 4,3,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+24,S4-CR-11: US-5.7 Labelled corpus expansion + F1 tracking,Story,To Do,Medium,Correlation,"Builds on S3-HF-09's seed corpus (the 0b215ef3 incident itself): expand the labelled set to >=30 incidents and track precision / recall / F1 of the validator + classifier against the labels weekly. Pair with S4-CR-04 / S4-CR-05 for measurement coverage.
+
+Evidence (2026-05-19 live-load investigation): S3-HF-09 shipped the scoreboard mechanism + seed; without an expanded labelled corpus, the scoreboard is undersampled
+Gate: labelled corpus >= 30 incidents; weekly F1 calculation runs and publishes to Grafana
+
+Cross-reference: sprint-history.html row 21; FYP report Chapter 11 table row 21
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 21",SCRUM Sprint 4,3,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+25,S4-CR-12: L2/L3 chaos scenarios (O-12),Story,To Do,Low,Correlation,"Two additional chaos test classes beyond the current L1 set: L2 (network partition between services) and L3 (cascading failure -- downstream OOM triggers upstream timeout cascade).
+
+Evidence (2026-05-19 live-load investigation): current chaos harness exercises L1 (single-service fault) scenarios; real outages tend to involve cascade dynamics
+Gate: two new chaos scenario classes in monitoring-project/playbooks; chaos-run reports cover them; chaos scorer 5-axis output captures the new behaviour
+
+Cross-reference: sprint-history.html row 22; FYP report Chapter 11 table row 22
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 22",SCRUM Sprint 4,5,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+26,S4-CR-13: Drain3 self-monitoring loop allowlist,Story,To Do,Low,Correlation,"30-min fix: extend the Drain3 polling layer with a service_name allowlist that excludes the triage service itself from its own anomaly detection (currently the Drain3 anomaly stream sometimes self-reports on the triage service's own log volume).
+
+Evidence (2026-05-19 live-load investigation): behavioural concern surfaced 2026-04-29 -- Drain3 firing on the triage service's own logs creates a self-reflexive loop
+Gate: Drain3 poller skips service_name in the configured allowlist; triage service is in the default allowlist
+
+Cross-reference: sprint-history.html row 23; FYP report Chapter 11 table row 23
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 23",SCRUM Sprint 4,1,3,Lina Laaraich,Lina Laaraich,03/Jun/26
+27,S4-CR-14: Doc debt -- CLAUDE.md refresh + stale architecture PNGs replaced,Story,To Do,Low,Correlation,"monitoring-project/CLAUDE.md last touched 2026-04 -- needs a refresh to reflect Sprint 3 close-out reality (Epic 4 closed, MCP-only invariant + CI lint, deep_trace path). Architecture PNGs in monitoring-docs are pre-AI-RCA -- redraw to show the current 5-MCP topology.
+
+Evidence (2026-05-19 live-load investigation): doc-vs-code drift; carried in audit reports across multiple weeks
+Gate: CLAUDE.md committed with current content; 2 architecture PNGs replaced with current diagrams; audit report's doc-drift list clears these two items
+
+Cross-reference: sprint-history.html row 24; FYP report Chapter 11 table row 24
+
+---
+P-tag: — (carry-forward from sprint3-backlog.md)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 24",SCRUM Sprint 4,2,3,Lina Laaraich,Lina Laaraich,03/Jun/26
