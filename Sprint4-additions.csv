@@ -267,6 +267,28 @@ Cross-reference: sprint-history.html row 24; FYP report Chapter 11 table row 24.
 ---
 P-tag: — (carry-forward from sprint3-backlog.md)
 Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 24",102,Lina Laaraich,Lina Laaraich,03/Jun/26
+127,S4-HF-01: Widen bounded-agency trigger to low-confidence + clamp-fired verdicts (not just data_starved),Story,To Do,High,Latency,"Widen the bounded-agency 6-tool retry trigger so the system iterates on get_trace / prometheus.query / loki.query_range itself instead of emitting hint text via clamp_actions.py:diagnostic_steps_for_clamp('Open Jaeger and inspect the slowest trace...').
+
+Acceptance criteria:
+- Widen gate in app/pipeline.py:453-456 (should_retry_for_quality). New condition: data_starved OR (first_pass_confidence < 0.55 AND F-4 clamp fired) OR (suggested_actions == [] AND verdict in {dismiss, escalate})
+- Per-alert-family tool steering in agency prompt (extend TOOLS_DESCRIPTION at bounded_agency.py:98): latency-family -> jaeger.get_traces + prometheus.query range; resource-family (PodHigh*, *MemoryUsage, *CpuUsage) -> prometheus.query topk + jaeger.get_traces; availability -> prometheus.query on up{} + loki.query_range
+- Cost ceiling preserved: max 1 extra LLM+tool iteration per alert
+- Metric: existing triage_bounded_agency_invocations_total gains a 'trigger' label with values data_starved | low_confidence | empty_actions
+- New setting triage_low_confidence_retry_enabled (default True) -- killable independent of triage_bounded_agency_enabled
+- Tests: extend tests/test_bounded_agency.py with 3 new fixtures (one per family) asserting trigger label + tool whitelist matches family
+
+Out of scope: Tier 3 hypothesis-tree state (multi-tool loops -- separate story S4-CR-03). This is the cheap widen-the-gate fix, not the deferred agentic rewrite.
+
+Files touched: app/pipeline.py:443-456 (trigger), app/bounded_agency.py:98 (TOOLS_DESCRIPTION family hints), app/metrics.py (trigger label), app/config.py (new flag), tests/test_bounded_agency.py.
+
+Evidence (2026-05-19 live-load investigation): PodHighMemoryUsage RCA on 2026-05-20 was clamped to 0.40 confidence; F-4 clamp fired; clamp_actions populated diagnostic verbs telling the operator to investigate via Jaeger. The system already has Jaeger/Prometheus/Loki access via the 6-tool whitelist in app/bounded_agency.py:88-95 -- the retry just never fires for memory/cpu alerts because they don't reach data_starved, they reach low-confidence-but-non-empty.
+Gate: Replay the 2026-05-20 PodHighMemoryUsage decision through the patched pipeline. New RCA must cite at least one concrete span line (from jaeger.get_traces) OR a per-pod topk row (from prometheus.query), NOT just diagnostic_steps_for_clamp's hint text. Tier 0 clamp + diagnostic_steps remain the safety net for retries that still fail.
+
+Cross-reference: sprint-history.html row 25; FYP report Chapter 11 table row 25. Story Points (bulk-edit post-import): 3.
+
+---
+P-tag: (no P-number -- surfaced 2026-05-20 chat)
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 25",100,Lina Laaraich,Lina Laaraich,03/Jun/26
 201,S4-PRED-01: Detective-signals dashboard tab -- aggregate Drain3/sigma/recurrence into one early-warning surface,Story,To Do,Medium,Predictive,"Add a /dashboard/early-warning tab surfacing four panels of pre-alert signal already in the system: (1) Drain3 template novelty per service (recent new templates from /drain3/stats top_new_patterns_per_service); (2) entity-baseline sigma-claims from recent decisions (context pack injections of 'Xsigma above SERVICE 7d baseline' from entity_baselines.py); (3) adaptive-threshold widened-but-not-fired ratio (US-5.4 rules that crossed adaptive baseline but didn't reach the static-threshold floor); (4) recurrence-gate fires and force-escalates (US-5.8) per-rule cumulative counts from triage_recurrence_*_total counters. Zero new MCP routes, zero new data sources -- pulls from /drain3/stats + /metrics + recent /decisions. ~3 hours of HTML/JS in app/main.py near the existing /dashboard route.
 
 Evidence (2026-05-19 live-load investigation): Detective signals already feed the LLM at fire-time but aren't surfaced to operators directly; surfacing them as a tab means operators can spot building trends before an alert fires. The 'detective signals' framing surfaced 2026-05-20 EOD chat as the zero-new-code reframe of the predictive question.

@@ -547,6 +547,55 @@ STORIES = [
      "clears these two items",
      24, None),
 
+    # S4-HF-01 (item 25 in sprint-history.html ranked list) — added to the
+    # generator 2026-05-21 so it survives regen. Originally added directly to
+    # Sprint4-additions.csv 2026-05-20 (commit a92e447) but never made it
+    # into the generator script.
+    ("S4-HF-01",
+     "Widen bounded-agency trigger to low-confidence + clamp-fired verdicts (not just data_starved)",
+     "To Do", "High", EPIC9_ID, "(no P-number -- surfaced 2026-05-20 chat)", "3",
+     "Widen the bounded-agency 6-tool retry trigger so the system iterates "
+     "on get_trace / prometheus.query / loki.query_range itself instead of "
+     "emitting hint text via clamp_actions.py:diagnostic_steps_for_clamp("
+     "'Open Jaeger and inspect the slowest trace...').\n\n"
+     "Acceptance criteria:\n"
+     "- Widen gate in app/pipeline.py:453-456 (should_retry_for_quality). "
+     "New condition: data_starved OR (first_pass_confidence < 0.55 AND F-4 "
+     "clamp fired) OR (suggested_actions == [] AND verdict in {dismiss, "
+     "escalate})\n"
+     "- Per-alert-family tool steering in agency prompt (extend "
+     "TOOLS_DESCRIPTION at bounded_agency.py:98): latency-family -> "
+     "jaeger.get_traces + prometheus.query range; resource-family (PodHigh*, "
+     "*MemoryUsage, *CpuUsage) -> prometheus.query topk + jaeger.get_traces; "
+     "availability -> prometheus.query on up{} + loki.query_range\n"
+     "- Cost ceiling preserved: max 1 extra LLM+tool iteration per alert\n"
+     "- Metric: existing triage_bounded_agency_invocations_total gains a "
+     "'trigger' label with values data_starved | low_confidence | "
+     "empty_actions\n"
+     "- New setting triage_low_confidence_retry_enabled (default True) -- "
+     "killable independent of triage_bounded_agency_enabled\n"
+     "- Tests: extend tests/test_bounded_agency.py with 3 new fixtures (one "
+     "per family) asserting trigger label + tool whitelist matches family\n\n"
+     "Out of scope: Tier 3 hypothesis-tree state (multi-tool loops -- "
+     "separate story S4-CR-03). This is the cheap widen-the-gate fix, not "
+     "the deferred agentic rewrite.\n\n"
+     "Files touched: app/pipeline.py:443-456 (trigger), "
+     "app/bounded_agency.py:98 (TOOLS_DESCRIPTION family hints), "
+     "app/metrics.py (trigger label), app/config.py (new flag), "
+     "tests/test_bounded_agency.py.",
+     "PodHighMemoryUsage RCA on 2026-05-20 was clamped to 0.40 confidence; "
+     "F-4 clamp fired; clamp_actions populated diagnostic verbs telling the "
+     "operator to investigate via Jaeger. The system already has Jaeger/"
+     "Prometheus/Loki access via the 6-tool whitelist in "
+     "app/bounded_agency.py:88-95 -- the retry just never fires for memory/"
+     "cpu alerts because they don't reach data_starved, they reach "
+     "low-confidence-but-non-empty.",
+     "Replay the 2026-05-20 PodHighMemoryUsage decision through the patched "
+     "pipeline. New RCA must cite at least one concrete span line (from "
+     "jaeger.get_traces) OR a per-pod topk row (from prometheus.query), NOT "
+     "just diagnostic_steps_for_clamp's hint text. Tier 0 clamp + "
+     "diagnostic_steps remain the safety net for retries that still fail.",
+     25, None),
 ]
 
 
