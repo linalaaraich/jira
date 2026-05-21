@@ -2,7 +2,7 @@
 
 This README accompanies `Sprint4-additions.csv` and `generate_sprint4_additions.py`. Mirrors the Sprint 3 import process with **two corrections** versus the Sprint 3 template (both verified the hard way on 2026-05-20):
 
-1. **Work Item IDs start at 100, not 1.** Jira's CSV importer treats `Work item Id` as persistent per-project — Sprint 3's import used IDs 1–32, so reusing 1–27 for Sprint 4 caused 25-of-27 to be matched as updates against Sprint 3's already-imported issues. Sprint 4 IDs are 100–126.
+1. **Work Item IDs start at 100, not 1.** Jira's CSV importer treats `Work item Id` as persistent per-project — Sprint 3's import used IDs 1–32, so reusing 1–27 for Sprint 4 caused 25-of-27 to be matched as updates against Sprint 3's already-imported issues. Sprint 4 IDs occupy two bands: 100–127 for EPIC9/10/11 + their stories (24 P-tagged + S4-HF-01 = 25 stories) and 200–204 for EPIC12 + the 4 S4-PRED stories (added 2026-05-21 — predictive observability carve-out).
 2. **CSV is now 11 columns, not 13.** Jira's importer was tightened between 2026-04-29 (Sprint 3 import) and 2026-05-20: `Sprint` and `Story Points` columns now throw hard errors ("Sprint id must be a number" / "Custom Field Story Points is not associated with issue type Story") instead of being silently dropped. They're omitted from the CSV; the per-row Story Points value still lives in the Description's metadata footer for cross-check and is also in the bulk-edit table below.
 
 ## TL;DR
@@ -10,9 +10,9 @@ This README accompanies `Sprint4-additions.csv` and `generate_sprint4_additions.
 1. **Phase 0 — Jira hygiene clicks** (do this BEFORE importing — 5 small flips, ~10 min).
 2. **Create Sprint 4** as a sprint object in Jira: name `SCRUM Sprint 4`, start `2026-05-20`, end `2026-06-03`.
 3. **Close Sprint 3** via "Complete sprint" → tick "Move incomplete issues to Sprint 4" in the dialog. Six carry stories (SCRUM-149..154) move automatically.
-4. **Import** `Sprint4-additions.csv` → 27 items: 3 epics (EPIC9/10/11) + 24 stories.
+4. **Import** `Sprint4-additions.csv` → **33 items: 4 epics (EPIC9/10/11/12) + 29 stories**.
 5. **Bulk-edit** Sprint, Story Points, Due date on the imported rows (the three columns Jira's importer drops — table below).
-6. **Verify** Sprint 4 board: 3 epics, 24 stories under correct parent, ~88 SP total of which 2 SP already Done (P2 backfill).
+6. **Verify** Sprint 4 board: 4 epics, 29 stories under correct parent, **100 SP** total of which 2 SP already Done (P2 backfill).
 
 ---
 
@@ -59,11 +59,11 @@ Jira generates a Sprint 3 retro report — screenshot it. Useful for the FYP rep
 1. Upload `Sprint4-additions.csv` (from this repo).
 2. Select the SCRUM project as target.
 3. Confirm field mapping — each column should auto-map (the format matches Sprint 3's). The three columns Jira asks about specifically for child-parent linkage are `Work item Id`, `Work type`, and `Parent`.
-4. Run the dry-run preview → confirm 27 items, all 24 stories show their parent epic (EPIC9/10/11), commit.
+4. Run the dry-run preview → confirm **33 items**, all 29 stories show their parent epic (EPIC9/10/11/12), commit.
 
 If the parent links don't resolve (rare):
-- Filter the CSV to just the 3 Epic rows (Work Item Ids 1, 2, 3), import those first.
-- Then import the 24 Story rows — Jira will find the epics already in the project and link by Parent.
+- Filter the CSV to just the 4 Epic rows (Work Item Ids 100, 101, 102, 200), import those first.
+- Then import the 29 Story rows — Jira will find the epics already in the project and link by Parent.
 
 ---
 
@@ -71,13 +71,13 @@ If the parent links don't resolve (rare):
 
 Per the Sprint 3 lesson (`SPRINT3-README.md` §Step 2), Jira's CSV importer silently drops these three fields. Use the bulk-edit-by-board path:
 
-1. After Phase 3 import, all 27 new items appear in the Backlog with no Sprint assigned.
-2. Multi-select all 27 → "Move to Sprint" → choose **SCRUM Sprint 4**.
+1. After Phase 3 import, all 33 new items appear in the Backlog with no Sprint assigned.
+2. Multi-select all 33 → "Move to Sprint" → choose **SCRUM Sprint 4**.
 3. Story Points and Due date still need per-row updates. Use the per-story values below (copy-paste in batches of 5–10):
 
 ### Bulk-edit table — Sprint + Story Points + Due date
 
-(Sprint column is also missing because Jira errors on the textual name — bulk-assign Sprint = `SCRUM Sprint 4` to all 27 imported rows in one multi-select action.)
+(Sprint column is also missing because Jira errors on the textual name — bulk-assign Sprint = `SCRUM Sprint 4` to all 33 imported rows in one multi-select action.)
 
 | CSV Work Item Id | Code | Status | Story Points | Due date |
 |---|---|---|---|---|
@@ -108,6 +108,12 @@ Per the Sprint 3 lesson (`SPRINT3-README.md` §Step 2), Jira's CSV importer sile
 | 124 | S4-CR-12 | To Do | 5 | 03/Jun/26 |
 | 125 | S4-CR-13 | To Do | 1 | 03/Jun/26 |
 | 126 | S4-CR-14 | To Do | 2 | 03/Jun/26 |
+| 127 | S4-HF-01 | To Do | 3 | 03/Jun/26 |
+| 200 | EPIC12 | To Do | (epic — no SP) | 03/Jun/26 |
+| 201 | S4-PRED-01 | To Do | 1 | 03/Jun/26 |
+| 202 | S4-PRED-02 | To Do | 2 | 03/Jun/26 |
+| 203 | S4-PRED-03 | To Do | 3 | 03/Jun/26 |
+| 204 | S4-PRED-04 | To Do | 3 | 03/Jun/26 |
 
 Story Points also live in each ticket's Description metadata footer for cross-check.
 
@@ -124,15 +130,16 @@ Jira will prompt for sprint goal — paste:
 
 ## What's in the import
 
-### 3 themed epics
+### 4 themed epics
 
 | Epic | Theme | Items from `sprint-history.html` ranked list | Stories |
 |---|---|---|---|
-| **EPIC9** Latency + suppression | Close the latency gap (90s median target, 6 min reality) + close the P2 cascade (DONE) + dashboard amber/grey | rows 1, 2, 6, 15 | S4-LAT-01..04 (4 stories) |
+| **EPIC9** Latency + suppression | Close the latency gap (90s median target, 6 min reality) + close the P2 cascade (DONE) + dashboard amber/grey + bounded-agency widening | rows 1, 2, 6, 15, 25 | S4-LAT-01..04 + S4-HF-01 (5 stories) |
 | **EPIC10** RCA prose honesty | Close the gap between RCA-prose intent and reality (no PromQL/raw floats in lede; no hallucinated metric names; no duplicate diagnostic_steps) | rows 3, 4, 7, 8, 9, 11 | S4-PR-01..06 (6 stories) |
 | **EPIC11** Correlation + retrieval + carry | US-5.2 incident correlator + MCP native tool-calling + Tier 3 + curated RAG + resilience + polish | rows 5, 10, 12, 13, 14, 16–24 | S4-CR-01..14 (14 stories) |
+| **EPIC12** Predictive observability | Surface forward-looking signals before paging: detective-signals UI tab + capacity-runway dashboard (PromQL predict_linear) + 30-day percentile bands + cascade predictor | rows 26-29 | S4-PRED-01..04 (4 stories) |
 
-### 24 stories with P-tag mapping
+### 29 stories with P-tag mapping
 
 | Code | P-tag | Title | SP | Status |
 |---|---|---|---|---|
@@ -160,8 +167,13 @@ Jira will prompt for sprint goal — paste:
 | S4-CR-12 | — | L2/L3 chaos scenarios (O-12) | 5 | To Do |
 | S4-CR-13 | — | Drain3 self-monitoring loop allowlist | 1 | To Do |
 | S4-CR-14 | — | Doc debt — CLAUDE.md + stale PNGs | 2 | To Do |
+| S4-HF-01 | — | Widen bounded-agency trigger to low-confidence + clamp-fired (not just data_starved) | 3 | To Do |
+| S4-PRED-01 | P-detective | Detective-signals dashboard tab (EPIC12) | 1 | To Do |
+| S4-PRED-02 | **P-3** | Capacity-runway dashboard — `predict_linear()` (EPIC12) | 2 | To Do |
+| S4-PRED-03 | **P-5** | Saturation-band entity baselines — 30-day percentile bands (EPIC12) | 3 | To Do |
+| S4-PRED-04 | **P-2** | Cascade predictor — P(Y\|X) from `rca_history.db` (EPIC12) | 3 | To Do |
 
-**Total: 88 SP across 24 stories** (2 SP already Done = P2 backfill). Sprint 4 realistic 2-week velocity per project history ≈ 25–35 SP — the long tail (EPIC11) is intentionally a backlog buffer, not all expected to ship in this sprint.
+**Total: 100 SP across 29 stories** (2 SP already Done = P2 backfill). Sprint 4 realistic 2-week velocity per project history ≈ 25–35 SP — the long tail (EPIC11 + the heavier EPIC12 items) is intentionally a backlog buffer, not all expected to ship in this sprint.
 
 ### Plus 6 carry-forward stories from Sprint 3 (moved by Phase 2 close-dialog, NOT in this CSV)
 
@@ -178,8 +190,8 @@ These stay under their original Sprint 3 epics (EPIC6, EPIC7) — they're not re
 
 ### Sprint 4 grand total (after import + carry)
 
-- **88 SP** new + **13 SP** carry = **101 SP nominal**, of which **2 SP** already Done (P2 backfill).
-- Realistic-throughput burndown: top 8–10 items only (per `sprint-history.html` §"Suggested week-1 execution order"); the rest stays as ranked backlog inside Sprint 4 for visibility.
+- **100 SP** new + **13 SP** carry = **113 SP nominal**, of which **2 SP** already Done (P2 backfill).
+- Realistic-throughput burndown: top 8–10 items only (per `sprint-history.html` §"Suggested execution order"); the rest stays as ranked backlog inside Sprint 4 for visibility. The EPIC12 quick-wins (S4-PRED-01 ~3 h + S4-PRED-02 2–3 d) slot in as days 1–3 because they're the supervisor-demo unlock.
 
 ---
 
@@ -206,7 +218,7 @@ Re-run `audit-live.sh` after each S4-LAT-01 sub-task to confirm the queue serial
 
 1. **Numeric Work Item IDs required** — same constraint as Sprint 3. Saved at `feedback_jira_csv_import.md`.
 2. **Sprint, Story Points, Due date silently dropped** — known Jira importer behaviour. Phase 4 above is the manual fix-up.
-3. **88 SP of new stories in 2 weeks is unrealistic** for a 3-person team — the long tail (EPIC11) is intentionally a backlog buffer. Top 8–10 items only are the realistic Sprint 4 commitment.
+3. **100 SP of new stories in 2 weeks is unrealistic** for a 3-person team — the long tail (EPIC11 + the heavier EPIC12 items) is intentionally a backlog buffer. Top 8–10 items only are the realistic Sprint 4 commitment.
 4. **No new dependencies on dropped scope.** GPU migration explicitly dropped 2026-05-19; MCP native tool-calling rewrite (S4-CR-02) was its only dependency and is now unblocked on the laptop directly.
 5. **S4-LAT-02 P2 backfill is already Done** — historical attribution only, no actual work pending. Audit trail completeness.
 
