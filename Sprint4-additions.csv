@@ -17,6 +17,12 @@ Stories in this epic: S4-CR-01 through S4-CR-14
 Items from the 24-item ranked list (sprint-history.html): 5 (P10 US-5.2 correlator), 10 (MCP native tool-calling), 12 (Tier 3), 13 (curated RAG), 14 (weekly curation), 16 (pod-alert fixes), 17 (O-9+O-10), 18 (sentence-transformers), 19 (trace-ID linkage), 20 (RCA playbook), 21 (US-5.7 corpus), 22 (L2/L3 chaos), 23 (Drain3 self-mon allowlist), 24 (doc debt)
 
 Acceptance: all child stories Done by sprint end (2026-06-03), or carried with explicit rationale.",,Lina Laaraich,,03/Jun/26
+200,EPIC12: Sprint 4 -- Predictive observability,Epic,To Do,Medium,Predictive,"Surface forward-looking signals so the operator sees a developing problem BEFORE the post-incident page. Today the platform is reactive -- every code path assumes an alert has fired. EPIC12 adds a thin predictive layer using data the platform already collects: PromQL trajectory math via predict_linear() (capacity-runway dashboard), percentile-band entity baselines (saturation bands), historical cascade probabilities mined from rca_history.db (cascade predictor), and a UI tab that aggregates the detective signals already in the system (Drain3 novelty + entity sigma-claims + recurrence-gate fires). All four stories are PoC-test-bed-shippable in Sprint 4. The heavier ML lift (Prophet/Holt-Winters forecasting P-1, pre-deploy canary diff P-4, trace-shape predictor P-6) is deferred to Sprint 5+. Carve-out chosen 2026-05-21 from the SESSION_HANDOFF.md §C predictive-roadmap draft.
+
+Stories in this epic: S4-PRED-01, S4-PRED-02, S4-PRED-03, S4-PRED-04
+Items from the 24-item ranked list (sprint-history.html): 26 (detective-signals UI tab), 27 (P-3 capacity-runway dashboard), 28 (P-5 saturation-band baselines), 29 (P-2 cascade predictor, partners with S4-CR-01)
+
+Acceptance: all child stories Done by sprint end (2026-06-03), or carried with explicit rationale.",,Lina Laaraich,,03/Jun/26
 103,S4-LAT-01: Latency bundle -- 180s pipeline timeout + per-stage instrumentation + Ollama concurrency cap,Story,To Do,Highest,Latency,"Three sub-tasks that compound to pull median RCA latency from ~6 min to ~90s on the laptop runner: (1) Ollama concurrency cap = 1 (serial queue, no GPU time-sharing); (2) hard 180s asyncio.wait_for around the pipeline entry, with raw-alert fallback on TimeoutError; (3) per-stage histogram triage_pipeline_duration_seconds{stage} across webhook-receive / context-gather / exemplar-match / LLM-call / validate / retry / persist / notify. Per-stage instrumentation was drafted in a scratch branch during the investigation window -- find and rebase rather than re-scaffold.
 
 Evidence (2026-05-19 live-load investigation): median 6-7 min, worst 23 min (PodHighMemoryUsage 2026-04-29); today's 2nd TargetDown took 16.7 min queued behind first; audit-live run #3 on 2026-05-20 hit the queue blowup again
@@ -261,27 +267,43 @@ Cross-reference: sprint-history.html row 24; FYP report Chapter 11 table row 24.
 ---
 P-tag: — (carry-forward from sprint3-backlog.md)
 Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 24",102,Lina Laaraich,Lina Laaraich,03/Jun/26
+201,S4-PRED-01: Detective-signals dashboard tab -- aggregate Drain3/sigma/recurrence into one early-warning surface,Story,To Do,Medium,Predictive,"Add a /dashboard/early-warning tab surfacing four panels of pre-alert signal already in the system: (1) Drain3 template novelty per service (recent new templates from /drain3/stats top_new_patterns_per_service); (2) entity-baseline sigma-claims from recent decisions (context pack injections of 'Xsigma above SERVICE 7d baseline' from entity_baselines.py); (3) adaptive-threshold widened-but-not-fired ratio (US-5.4 rules that crossed adaptive baseline but didn't reach the static-threshold floor); (4) recurrence-gate fires and force-escalates (US-5.8) per-rule cumulative counts from triage_recurrence_*_total counters. Zero new MCP routes, zero new data sources -- pulls from /drain3/stats + /metrics + recent /decisions. ~3 hours of HTML/JS in app/main.py near the existing /dashboard route.
 
-127,"S4-HF-01: Widen bounded-agency trigger to low-confidence + clamp-fired verdicts (not just data_starved)",Story,To Do,High,Latency,"Widen the bounded-agency 6-tool retry trigger so the system iterates on get_trace / prometheus.query / loki.query_range itself instead of emitting hint text via clamp_actions.py:diagnostic_steps_for_clamp(""Open Jaeger and inspect the slowest trace..."").
+Evidence (2026-05-19 live-load investigation): Detective signals already feed the LLM at fire-time but aren't surfaced to operators directly; surfacing them as a tab means operators can spot building trends before an alert fires. The 'detective signals' framing surfaced 2026-05-20 EOD chat as the zero-new-code reframe of the predictive question.
+Gate: 4 panels render with live data from existing endpoints (/drain3/stats + /metrics + recent /decisions); zero new MCP routes (MCP-invariant lint stays clean); tab is linked from /dashboard navigation; existing dashboard tests still green
 
-Trigger (2026-05-20): PodHighMemoryUsage RCA was clamped to 0.40 confidence; F-4 clamp fired; clamp_actions populated diagnostic verbs telling the operator to investigate via Jaeger. The system already has Jaeger/Prometheus/Loki access via the 6-tool whitelist in app/bounded_agency.py:88-95 -- the retry just never fires for memory/cpu alerts because they don't reach data_starved, they reach low-confidence-but-non-empty. Lina (in chat): ""that's why I build the system anyway, I wanted it to have access to all metrics and traces, it should be able to investigate it not suggest it as an action for me to do.""
-
-Acceptance criteria:
-- Widen gate in app/pipeline.py:453-456 (should_retry_for_quality). New condition: data_starved OR (first_pass_confidence < 0.55 AND F-4 clamp fired) OR (suggested_actions == [] AND verdict in {dismiss, escalate})
-- Per-alert-family tool steering in agency prompt (extend TOOLS_DESCRIPTION at bounded_agency.py:98): latency-family -> jaeger.get_traces + prometheus.query range; resource-family (PodHigh*, *MemoryUsage, *CpuUsage) -> prometheus.query topk + jaeger.get_traces; availability -> prometheus.query on up{} + loki.query_range
-- Cost ceiling preserved: max 1 extra LLM+tool iteration per alert
-- Metric: existing triage_bounded_agency_invocations_total gains a ""trigger"" label with values data_starved | low_confidence | empty_actions
-- New setting triage_low_confidence_retry_enabled (default True) -- killable independent of triage_bounded_agency_enabled
-- Tests: extend tests/test_bounded_agency.py with 3 new fixtures (one per family) asserting trigger label + tool whitelist matches family
-
-Acceptance gate: Replay the 2026-05-20 PodHighMemoryUsage decision through the patched pipeline. New RCA must cite at least one concrete span line (from jaeger.get_traces) OR a per-pod topk row (from prometheus.query), NOT just diagnostic_steps_for_clamp's hint text. Tier 0 clamp + diagnostic_steps remain the safety net for retries that still fail.
-
-Out of scope: Tier 3 hypothesis-tree state (multi-tool loops -- separate story S4-CR-03). This is the cheap widen-the-gate fix, not the deferred agentic rewrite.
-
-Files touched: app/pipeline.py:443-456 (trigger), app/bounded_agency.py:98 (TOOLS_DESCRIPTION family hints), app/metrics.py (trigger label), app/config.py (new flag), tests/test_bounded_agency.py.
+Cross-reference: sprint-history.html row 26; FYP report Chapter 11 table row 26. Story Points (bulk-edit post-import): 1.
 
 ---
-P-tag: Sprint 4 (no P-number -- surfaced from chat 2026-05-20, not 2026-05-19 investigation)
-Source: SESSION_HANDOFF.md 2026-05-20 close-out + chat with Lina re: PodHighMemoryUsage diagnostic-steps complaint
-Story Points (bulk-edit post-import): 3
-Pairs with: S4-LAT-01 (per-stage instrumentation makes the new retry observable); S4-CR-02 (MCP native tool-calling improves the tool-call success rate); S4-CR-03 (deferred Tier 3 -- this story is the cheap precursor)",100,Lina Laaraich,Lina Laaraich,03/Jun/26
+P-tag: P-detective
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 26",200,Lina Laaraich,Lina Laaraich,03/Jun/26
+202,"S4-PRED-02: Capacity-runway dashboard -- predict_linear() trajectories on disk, heap, CPU, JDBC pool",Story,To Do,Medium,Predictive,"New Grafana dashboard using PromQL predict_linear() over a 6h trailing window for resource-saturation rates: container memory, container CPU, node disk free, JVM heap (if Spring actuator exposes it), JDBC pool usage (if exposed), Loki/Prometheus TSDB head series count. Single table panel with columns 'Resource | Current | Trajectory | Time-to-threshold', color-coded by urgency: <1h red, <24h amber, <7d yellow, >7d green. Pure PromQL -- no Python, no ML. Dashboard JSON committed to monitoring-project/roles/grafana/dashboards/. Cheapest+highest-impact predictive item: supervisor opens Grafana, sees the runway table, immediately understands the platform's forward-looking value.
+
+Evidence (2026-05-19 live-load investigation): Today's platform is reactive -- supervisor sees no forward-looking signal until an alert fires. predict_linear is a Prometheus built-in that's been available since 2.0; using it for runway estimates is a near-free demo win.
+Gate: dashboard renders >=6 resources with live trajectory; a manually-induced disk-fill simulation produces a clear 'fills in N min' cell that updates in real-time; supervisor-demo dry-run completes without follow-up questions about 'is this real data'
+
+Cross-reference: sprint-history.html row 27; FYP report Chapter 11 table row 27. Story Points (bulk-edit post-import): 2.
+
+---
+P-tag: P-3
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 27",200,Lina Laaraich,Lina Laaraich,03/Jun/26
+203,S4-PRED-03: Saturation-band entity baselines -- extend sigma-claims with 30-day percentile bands,Story,To Do,Medium,Predictive,"Extend app/entity_baselines.py to compute percentile bands over a 30-day rolling window in addition to sigma-claims. Inject 'entity novelty: top X% of values ever seen for this entity over 30 d' into the prompt context pack alongside the existing 'Xsigma above 7d baseline' claim. New PromQL queries via the prometheus-mcp using quantile_over_time(0.95, ...[30d]) and similar. Schema change to entity_baselines table: add percentile_band column. Additive -- the sigma-claim path keeps working, so prior RCAs in the corpus stay valid.
+
+Evidence (2026-05-19 live-load investigation): sigma-claims are mathematically precise but operationally opaque ('2.1sigma above baseline' doesn't communicate severity to a supervisor). Percentile band ('99.2 percentile') is immediately legible.
+Gate: >=5 recent RCAs cite percentile-band claim in prose; existing sigma-claim prose still works (additive, not replacement); MCP-invariant lint clean (new PromQL still routes through prometheus-mcp); entity_baselines.percentile_band column populated for >=2 services
+
+Cross-reference: sprint-history.html row 28; FYP report Chapter 11 table row 28. Story Points (bulk-edit post-import): 3.
+
+---
+P-tag: P-5
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 28",200,Lina Laaraich,Lina Laaraich,03/Jun/26
+204,S4-PRED-04: Cascade predictor -- P(Y next 5min | X fired) from rca_history.db,Story,To Do,Medium,Predictive,"Nightly APScheduler job builds the P(alert Y in next 5min | alert X fired now) transition matrix from rca_history.db over a 30-day trailing window with a minimum-support filter (>=5 co-occurrences). Surface via new MCP tool on rca_history_mcp: get_cascade_probabilities(alert_name, lookback_days=30, min_count=5) returning the top-K likely successors with their conditional probabilities. Pipeline injects 'Historical cascade: 87% chance of TargetDown within 7 min when HighKongP95Latency fires' into the LLM context pack when the firing alert has a high-probability successor. Partners with S4-CR-01 (US-5.2 incident correlator): same data source, complementary purpose -- S4-CR-01 collapses concurrent clusters, S4-PRED-04 predicts the next cluster from a single fire.
+
+Evidence (2026-05-19 live-load investigation): Current platform has no awareness of historical cascade dynamics. Real outages produce alert clusters with predictable transition patterns (4 MediumCpuUsage in 5 min + 4 TargetDown in 15 min on 2026-05-19, treated independently); injecting cascade probability into the RCA helps the LLM reason about likely follow-ups.
+Gate: >=3 cascade patterns surface in real RCAs over 1 week of operation; nightly transition-matrix update job has run >=1 cycle and produced a transition_matrix.json artifact or DB rows; new MCP tool passes MCP-invariant lint; depends on S4-CR-01 shape (correlator's webhook fan-in informs which alert pairs to track)
+
+Cross-reference: sprint-history.html row 29; FYP report Chapter 11 table row 29. Story Points (bulk-edit post-import): 3.
+
+---
+P-tag: P-2
+Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 29",200,Lina Laaraich,Lina Laaraich,03/Jun/26

@@ -8,11 +8,18 @@ shipped 2026-05-19) into Jira's SCRUM project. Mirrors the Sprint 3 format
 (`Sprint3-additions.csv`): 13 columns, numeric Work Item IDs for parent linkage,
 human-readable code prefixed onto Summary, P-tag and gate citation in Description.
 
-Sprint 4 epic shape (3 themed epics — see SESSION_HANDOFF.md §Decision 2):
+Sprint 4 epic shape (4 themed epics — see SESSION_HANDOFF.md §Decision 2,
+plus EPIC12 added 2026-05-21 per chat re: predictive observability roadmap):
   EPIC9  = Latency + suppression       (items 1, 2[done], 6, 15 = S4-LAT-01..04)
   EPIC10 = RCA prose honesty           (items 3, 4, 7, 8, 9, 11 = S4-PR-01..06)
   EPIC11 = Correlation + retrieval + carry (items 5, 10, 12, 13, 14, 16-24
                                             = S4-CR-01..14)
+  EPIC12 = Predictive observability    (items 26-29 = S4-PRED-01..04 — added
+                                        2026-05-21 from SESSION_HANDOFF.md §C
+                                        predictive roadmap. Carve-out: P-3
+                                        runway + P-5 saturation bands + P-2
+                                        cascade predictor + detective-signals
+                                        UI tab. P-1 / P-4 / P-6 deferred.)
 
 Sprint 3 spillover stories (S3-FB-01..03, S3-DR-01..03 = SCRUM-149..154) are
 moved into Sprint 4 via Jira's 'Close sprint -> Move incomplete to Sprint 4'
@@ -57,6 +64,8 @@ HEADERS = [
 EPIC9_ID = "100"
 EPIC10_ID = "101"
 EPIC11_ID = "102"
+EPIC12_ID = "200"  # gap-jump to 200 to keep EPIC band visually distinct from
+                   # the story band (103-127 + 128-131 added 2026-05-21)
 
 
 def desc(body: str, p_tag: str, evidence: str, gate: str,
@@ -152,6 +161,37 @@ EPICS = [
             "19 (trace-ID linkage), 20 (RCA playbook), 21 (US-5.7 corpus), "
             "22 (L2/L3 chaos), 23 (Drain3 self-mon allowlist), 24 (doc debt)",
             "S4-CR-01 through S4-CR-14",
+        ),
+        "Parent": "",
+        "Reporter": USER, "Assignee": "", "Due date": SPRINT_DUE,
+    },
+    {
+        "Work item Id": EPIC12_ID,
+        "Summary": "EPIC12: Sprint 4 -- Predictive observability",
+        "Work type": "Epic",
+        "Status": "To Do",
+        "Priority": "Medium",
+        "Labels": "Predictive",
+        "Description": epic_desc(
+            "Surface forward-looking signals so the operator sees a "
+            "developing problem BEFORE the post-incident page. Today the "
+            "platform is reactive -- every code path assumes an alert has "
+            "fired. EPIC12 adds a thin predictive layer using data the "
+            "platform already collects: PromQL trajectory math via "
+            "predict_linear() (capacity-runway dashboard), percentile-band "
+            "entity baselines (saturation bands), historical cascade "
+            "probabilities mined from rca_history.db (cascade predictor), "
+            "and a UI tab that aggregates the detective signals already in "
+            "the system (Drain3 novelty + entity sigma-claims + recurrence-"
+            "gate fires). All four stories are PoC-test-bed-shippable in "
+            "Sprint 4. The heavier ML lift (Prophet/Holt-Winters forecasting "
+            "P-1, pre-deploy canary diff P-4, trace-shape predictor P-6) is "
+            "deferred to Sprint 5+. Carve-out chosen 2026-05-21 from the "
+            "SESSION_HANDOFF.md §C predictive-roadmap draft.",
+            "26 (detective-signals UI tab), 27 (P-3 capacity-runway "
+            "dashboard), 28 (P-5 saturation-band baselines), 29 (P-2 "
+            "cascade predictor, partners with S4-CR-01)",
+            "S4-PRED-01, S4-PRED-02, S4-PRED-03, S4-PRED-04",
         ),
         "Parent": "",
         "Reporter": USER, "Assignee": "", "Due date": SPRINT_DUE,
@@ -506,41 +546,173 @@ STORIES = [
      "replaced with current diagrams; audit report's doc-drift list "
      "clears these two items",
      24, None),
+
 ]
+
+
+# EPIC12 stories live in their own ID band (201+) to keep the EPIC9/10/11
+# story band (103-127) reserved for follow-on stories under the original
+# three themed epics + Sprint-3 carry-row backfill (128-133 per
+# SESSION_HANDOFF.md §A). Predictive items were added 2026-05-21.
+STORIES_PRED = [
+    ("S4-PRED-01",
+     "Detective-signals dashboard tab -- aggregate Drain3/sigma/recurrence into one early-warning surface",
+     "To Do", "Medium", EPIC12_ID, "P-detective", "1",
+     "Add a /dashboard/early-warning tab surfacing four panels of "
+     "pre-alert signal already in the system: "
+     "(1) Drain3 template novelty per service (recent new templates from "
+     "/drain3/stats top_new_patterns_per_service); "
+     "(2) entity-baseline sigma-claims from recent decisions (context "
+     "pack injections of 'Xsigma above SERVICE 7d baseline' from "
+     "entity_baselines.py); "
+     "(3) adaptive-threshold widened-but-not-fired ratio (US-5.4 rules "
+     "that crossed adaptive baseline but didn't reach the static-threshold "
+     "floor); "
+     "(4) recurrence-gate fires and force-escalates (US-5.8) per-rule "
+     "cumulative counts from triage_recurrence_*_total counters. "
+     "Zero new MCP routes, zero new data sources -- pulls from "
+     "/drain3/stats + /metrics + recent /decisions. ~3 hours of HTML/JS in "
+     "app/main.py near the existing /dashboard route.",
+     "Detective signals already feed the LLM at fire-time but aren't "
+     "surfaced to operators directly; surfacing them as a tab means "
+     "operators can spot building trends before an alert fires. The "
+     "'detective signals' framing surfaced 2026-05-20 EOD chat as the "
+     "zero-new-code reframe of the predictive question.",
+     "4 panels render with live data from existing endpoints (/drain3/stats "
+     "+ /metrics + recent /decisions); zero new MCP routes (MCP-invariant "
+     "lint stays clean); tab is linked from /dashboard navigation; existing "
+     "dashboard tests still green",
+     26, None),
+    ("S4-PRED-02",
+     "Capacity-runway dashboard -- predict_linear() trajectories on disk, heap, CPU, JDBC pool",
+     "To Do", "Medium", EPIC12_ID, "P-3", "2",
+     "New Grafana dashboard using PromQL predict_linear() over a 6h "
+     "trailing window for resource-saturation rates: container memory, "
+     "container CPU, node disk free, JVM heap (if Spring actuator exposes "
+     "it), JDBC pool usage (if exposed), Loki/Prometheus TSDB head series "
+     "count. Single table panel with columns 'Resource | Current | "
+     "Trajectory | Time-to-threshold', color-coded by urgency: "
+     "<1h red, <24h amber, <7d yellow, >7d green. Pure PromQL -- no "
+     "Python, no ML. Dashboard JSON committed to "
+     "monitoring-project/roles/grafana/dashboards/. Cheapest+highest-impact "
+     "predictive item: supervisor opens Grafana, sees the runway table, "
+     "immediately understands the platform's forward-looking value.",
+     "Today's platform is reactive -- supervisor sees no forward-looking "
+     "signal until an alert fires. predict_linear is a Prometheus built-in "
+     "that's been available since 2.0; using it for runway estimates is a "
+     "near-free demo win.",
+     "dashboard renders >=6 resources with live trajectory; a manually-"
+     "induced disk-fill simulation produces a clear 'fills in N min' cell "
+     "that updates in real-time; supervisor-demo dry-run completes without "
+     "follow-up questions about 'is this real data'",
+     27, None),
+    ("S4-PRED-03",
+     "Saturation-band entity baselines -- extend sigma-claims with 30-day percentile bands",
+     "To Do", "Medium", EPIC12_ID, "P-5", "3",
+     "Extend app/entity_baselines.py to compute percentile bands over a "
+     "30-day rolling window in addition to sigma-claims. Inject 'entity "
+     "novelty: top X% of values ever seen for this entity over 30 d' into "
+     "the prompt context pack alongside the existing 'Xsigma above 7d "
+     "baseline' claim. New PromQL queries via the prometheus-mcp using "
+     "quantile_over_time(0.95, ...[30d]) and similar. Schema change to "
+     "entity_baselines table: add percentile_band column. Additive -- the "
+     "sigma-claim path keeps working, so prior RCAs in the corpus "
+     "stay valid.",
+     "sigma-claims are mathematically precise but operationally opaque "
+     "('2.1sigma above baseline' doesn't communicate severity to a "
+     "supervisor). Percentile band ('99.2 percentile') is immediately "
+     "legible.",
+     ">=5 recent RCAs cite percentile-band claim in prose; existing "
+     "sigma-claim prose still works (additive, not replacement); MCP-"
+     "invariant lint clean (new PromQL still routes through prometheus-mcp); "
+     "entity_baselines.percentile_band column populated for >=2 services",
+     28, None),
+    ("S4-PRED-04",
+     "Cascade predictor -- P(Y next 5min | X fired) from rca_history.db",
+     "To Do", "Medium", EPIC12_ID, "P-2", "3",
+     "Nightly APScheduler job builds the P(alert Y in next 5min | alert X "
+     "fired now) transition matrix from rca_history.db over a 30-day "
+     "trailing window with a minimum-support filter (>=5 co-occurrences). "
+     "Surface via new MCP tool on rca_history_mcp: "
+     "get_cascade_probabilities(alert_name, lookback_days=30, "
+     "min_count=5) returning the top-K likely successors with their "
+     "conditional probabilities. Pipeline injects 'Historical cascade: "
+     "87% chance of TargetDown within 7 min when HighKongP95Latency fires' "
+     "into the LLM context pack when the firing alert has a high-"
+     "probability successor. Partners with S4-CR-01 (US-5.2 incident "
+     "correlator): same data source, complementary purpose -- S4-CR-01 "
+     "collapses concurrent clusters, S4-PRED-04 predicts the next cluster "
+     "from a single fire.",
+     "Current platform has no awareness of historical cascade dynamics. "
+     "Real outages produce alert clusters with predictable transition "
+     "patterns (4 MediumCpuUsage in 5 min + 4 TargetDown in 15 min on "
+     "2026-05-19, treated independently); injecting cascade probability "
+     "into the RCA helps the LLM reason about likely follow-ups.",
+     ">=3 cascade patterns surface in real RCAs over 1 week of operation; "
+     "nightly transition-matrix update job has run >=1 cycle and produced "
+     "a transition_matrix.json artifact or DB rows; new MCP tool passes "
+     "MCP-invariant lint; depends on S4-CR-01 shape (correlator's webhook "
+     "fan-in informs which alert pairs to track)",
+     29, None),
+]
+
+
+LABEL_FOR_PARENT = {
+    EPIC9_ID: "Latency",
+    EPIC10_ID: "RCA-Prose",
+    EPIC11_ID: "Correlation",
+    EPIC12_ID: "Predictive",
+}
+
+
+def _emit_story(work_id, story_tuple):
+    code, summary_tail, status, priority, parent_id, p_tag, sp, body, evidence, gate, history_row, due_override = story_tuple
+    return {
+        "Work item Id": str(work_id),
+        "Summary": f"{code}: {summary_tail}",
+        "Work type": "Story",
+        "Status": status,
+        "Priority": priority,
+        "Labels": LABEL_FOR_PARENT[parent_id],
+        "Description": desc(body, p_tag, evidence, gate, history_row,
+                            cross_ref=f"Cross-reference: sprint-history.html row {history_row}; "
+                                      f"FYP report Chapter 11 table row {history_row}. "
+                                      f"Story Points (bulk-edit post-import): {sp}."),
+        "Parent": parent_id,
+        "Reporter": USER,
+        "Assignee": USER,
+        "Due date": due_override if due_override else SPRINT_DUE,
+    }
 
 
 def main():
     rows = list(EPICS)
 
+    # EPIC9/10/11 stories occupy the contiguous 103+ band.
     next_id = 103  # epics consumed 100, 101, 102
-    for code, summary_tail, status, priority, parent_id, p_tag, sp, body, evidence, gate, history_row, due_override in STORIES:
-        rows.append({
-            "Work item Id": str(next_id),
-            "Summary": f"{code}: {summary_tail}",
-            "Work type": "Story",
-            "Status": status,
-            "Priority": priority,
-            "Labels": {EPIC9_ID: "Latency", EPIC10_ID: "RCA-Prose", EPIC11_ID: "Correlation"}[parent_id],
-            "Description": desc(body, p_tag, evidence, gate, history_row,
-                                cross_ref=f"Cross-reference: sprint-history.html row {history_row}; "
-                                          f"FYP report Chapter 11 table row {history_row}. "
-                                          f"Story Points (bulk-edit post-import): {sp}."),
-            "Parent": parent_id,
-            "Reporter": USER,
-            "Assignee": USER,
-            "Due date": due_override if due_override else SPRINT_DUE,
-        })
+    for s in STORIES:
+        rows.append(_emit_story(next_id, s))
         next_id += 1
+
+    # EPIC12 stories live in the 201+ band (EPIC12 itself is at 200) so the
+    # 103+ story-band stays free for follow-on stories under EPIC9/10/11
+    # and the Sprint-3 carry-row backfill (128-133).
+    pred_id = 201
+    for s in STORIES_PRED:
+        rows.append(_emit_story(pred_id, s))
+        pred_id += 1
 
     with open("/root/jira/Sprint4-additions.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=HEADERS, quoting=csv.QUOTE_MINIMAL)
         writer.writeheader()
         writer.writerows(rows)
 
+    n_stories = len(STORIES) + len(STORIES_PRED)
     print(f"Wrote /root/jira/Sprint4-additions.csv with {len(rows)} rows "
-          f"({len(EPICS)} epics + {len(STORIES)} stories).")
-    total_sp = sum(int(s[6]) for s in STORIES if s[6].isdigit())
-    print(f"Total story points across {len(STORIES)} stories: {total_sp} SP "
+          f"({len(EPICS)} epics + {n_stories} stories: "
+          f"{len(STORIES)} in EPIC9/10/11 band + {len(STORIES_PRED)} in EPIC12 band).")
+    total_sp = sum(int(s[6]) for s in (STORIES + STORIES_PRED) if s[6].isdigit())
+    print(f"Total story points across {n_stories} stories: {total_sp} SP "
           f"(includes the 2 SP P2 backfill already Done).")
 
 
