@@ -329,3 +329,48 @@ Cross-reference: sprint-history.html row 29; FYP report Chapter 11 table row 29.
 ---
 P-tag: P-2
 Source: monitoring-docs/sprint-history.html §Sprint 4 candidates row 29",200,Lina Laaraich,Lina Laaraich,03/Jun/26
+205,S4-DA-01: Shelved-in-disguise email gate,Story,Done,High,RCA-Prose,"Email gate at pipeline.py blocks operator emails when verdict=escalate but confidence<0.40, quality in (needs_review, data_starved), or all suggested_actions contain 'Shelved'. 3-way action_taken: shelved/emailed/suppressed. Shipped 2026-05-21 19:13 UTC in monitoring-triage-service@1cbb220, suite 274/274.
+
+Evidence (2026-05-21 dashboard-output audit): RCAs with verdict=escalate were producing operator emails even when the prose explicitly recommended shelving the alert (suggested_actions all started with 'Shelved'); confidence<0.40 / quality=needs_review / data_starved RCAs were also reaching the inbox. Gate closes the loop: untrustworthy verdicts never page a human.
+Gate: gate logged in /decisions with action_taken tri-state; suite 274/274; verified live on observability-gpu-uswest2.
+
+Cross-reference: dashboard-audit-2026-05-21.html DA-1; solution-brief.html §7d. Story Points (bulk-edit post-import): 1.
+
+---
+Source: monitoring-docs/dashboard-audit-2026-05-21.html DA-1",101,Lina Laaraich,Lina Laaraich,21/May/26
+206,S4-DA-02: Unsafe-action stripping independent of clamp,Story,To Do,High,RCA-Prose,"Extend clamp_actions.py to strip kubectl/ssh/restart/systemctl actions whenever quality=actionable AND no named cause, regardless of confidence band. Catches confident-but-unsafe outputs the existing clamp lets through (today's stress test shipped 'ssh systemctl restart k3s-node.service' at confidence 0.95).
+
+Evidence (2026-05-21 dashboard-output audit): the existing clamp_actions gate only fires inside specific confidence bands; a high-confidence RCA with quality=actionable but no named cause currently slips through and emits destructive shell commands (ssh / systemctl / kubectl restart) to the operator inbox. The clamp needs to be band-independent when 'no named cause' is detected.
+Gate: regression test in tests/test_clamp_actions.py exercises confidence=0.95 + quality=actionable + cause=None path; unsafe action verbs stripped; safe diagnostic suggestions retained.
+
+Cross-reference: dashboard-audit-2026-05-21.html DA-2; solution-brief.html §7d. Story Points (bulk-edit post-import): 3.
+
+---
+Source: monitoring-docs/dashboard-audit-2026-05-21.html DA-2",101,Lina Laaraich,Lina Laaraich,03/Jun/26
+207,S4-DA-03: Cross-row verdict coherence,Story,To Do,Medium,RCA-Prose,"When a new RCA reuses a fingerprint fired within last N minutes, prepend prior RCA's named cause to LLM call context. Require explicit 'changed my mind because...' or 'same cause, condition resolved...' framing. Blocks silent verdict flips on same fingerprint.
+
+Evidence (2026-05-21 dashboard-output audit): consecutive RCAs on the same fingerprint flip verdict (escalate -> dismiss -> escalate) within minutes with no acknowledgement of the prior call's named cause. Operators see contradictory pages on what is the same incident. Coherence requirement: the LLM must SEE the prior verdict and either reaffirm with new evidence or explicitly explain the flip.
+Gate: pipeline injects prior_decision block into context pack when fingerprint reused within N minutes (N configurable, default 30); regression test asserts the block appears in the prompt; manual eval over 5 reused-fingerprint pairs shows explicit framing in >=4/5.
+
+Cross-reference: dashboard-audit-2026-05-21.html DA-3; solution-brief.html §7d. Story Points (bulk-edit post-import): 5.
+
+---
+Source: monitoring-docs/dashboard-audit-2026-05-21.html DA-3",101,Lina Laaraich,Lina Laaraich,03/Jun/26
+208,S4-DA-04: Drain3 fingerprint content-hashing,Story,To Do,Medium,Latency,"Change drain3 self-fire fingerprint from 'drain3-{service}' to 'drain3-{service}-{hash(top-3-novel-templates)}'. Stops dedupe gate from collapsing unrelated drain3 events.
+
+Evidence (2026-05-21 dashboard-output audit): the current drain3-{service} fingerprint collides across distinct novelty bursts on the same service; the dedupe gate then suppresses what are actually different anomalies. Content-hashing the top-3 novel templates into the fingerprint distinguishes unrelated bursts while still collapsing genuine repeats.
+Gate: drain3 fingerprint includes a deterministic 8-char hash of the sorted top-3 novel templates; regression test fires two drain3 events on the same service with disjoint template sets and asserts both pass the dedupe gate.
+
+Cross-reference: dashboard-audit-2026-05-21.html DA-4; solution-brief.html §7d. Story Points (bulk-edit post-import): 2.
+
+---
+Source: monitoring-docs/dashboard-audit-2026-05-21.html DA-4",100,Lina Laaraich,Lina Laaraich,03/Jun/26
+209,S4-DA-05: Alertname-family dedupe equivalence,Story,To Do,Medium,Latency,"Add ALERT_FAMILIES table to dedup.py so dedupe gate collapses cross-family duplicates on same instance (e.g. HighCpu + CriticalCpu + MediumCpu on same node = same incident). Currently keys only on (alertname, fingerprint).
+
+Evidence (2026-05-21 dashboard-output audit): a single CPU pressure event on one node currently produces 3 separate RCAs (MediumCpuUsage / HighCpuUsage / CriticalCpuUsage) because the dedupe gate keys on alertname; semantically these are one incident with escalating severity. ALERT_FAMILIES gives the dedupe gate equivalence classes so the operator sees one RCA per real condition.
+Gate: ALERT_FAMILIES dict added to dedup.py (CPU family, memory family, disk family, latency family as initial set); regression test fires Medium/High/Critical CPU on same instance within window and asserts a single dedupe key collapses all three.
+
+Cross-reference: dashboard-audit-2026-05-21.html DA-5; solution-brief.html §7d. Story Points (bulk-edit post-import): 2.
+
+---
+Source: monitoring-docs/dashboard-audit-2026-05-21.html DA-5",100,Lina Laaraich,Lina Laaraich,03/Jun/26
