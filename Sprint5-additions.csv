@@ -1,0 +1,67 @@
+Work item Id,Summary,Work type,Status,Priority,Labels,Description,Parent,Reporter,Assignee,Due date
+300,EPIC13: Sprint 5 -- Microservice test bed + canonical scenario,Epic,To Do,High,Test-Bed,"Sprint 5 keystone work: deploy a real multi-service microservice app on k3s (SF-13), stand up the k8s/Rancher MCP (SF-9), expand app-layer monitoring (SF-10), then validate the canonical dev-deletes-a-letter scenario end-to-end (SF-11). Without this epic the platform can't be tested against the 'multiple apps each with front/back/db, some with bespoke layers' shape the supervisor described in the 2026-05-21 presentation. EPIC keystone for Sprint 5.
+
+Source: monitoring-docs/solution-brief.html §12.4 + §12.5 + §13.4. Story Points (bulk-edit post-import): 21.",,Lina Laaraich,Lina Laaraich,17/Jun/26
+301,EPIC14: Sprint 5 -- Incident entity + sidebar insight surfaces,Epic,To Do,High,Correlation-Retrieval,"Sprint 5 backend deepening: schema migration to introduce an incident entity (Phase 2.2 in §13), then wire the three insight sidebar surfaces that depend on it — Incidents (3.B), Stats (3.A), Anomalies (3.A). Together these turn the v2 sidebar's nav from 'one item works, 8 route nowhere' into 'half of operator's work is now sidebar-driven.'
+
+Source: monitoring-docs/solution-brief.html §13.3 Phase 2.2 + §13.4 Phase 3.A/B. Story Points (bulk-edit post-import): 19.",,Lina Laaraich,Lina Laaraich,17/Jun/26
+302,EPIC15: Sprint 5 -- Operator config + production hardening,Epic,To Do,Medium,Operator-Config,"Sprint 5 operator-control work: managed-state config surfaces (Phase 3.C — Alerts-config + Drain3-engine + Integrations) + production-hardening items (Phase 4 — SSE / server-side filter / operator identity / React pre-compile) + DA-6 pod-level attribution drill-down + SF-12 platform KPI Grafana dashboard. Heavier polish + the last sidebar items.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.C + §13.5 Phase 4 + §12.4 SF-12 + 2026-05-21 stress3 DA-6. Story Points (bulk-edit post-import): 27.",,Lina Laaraich,Lina Laaraich,17/Jun/26
+303,S5-MSB-01: Microservice application test bed deploy (SF-13 keystone),Story,To Do,Highest,Test-Bed,"Deploy a multi-service microservice application on k3s with the shape the supervisor described: 5+ services, each with front / back / db, some with bespoke layers (camera-stream, sensor-ingest, payment, inventory). Distinct namespaces per application. Without this, the canonical dev-deletes-a-letter scenario (§12.5) cannot be validated end-to-end — the current bed has only react-springboot-mysql + car-rental, which doesn't expose the multi-application attribution challenge.
+
+Candidates: Google Cloud microservices-demo (10 services), Weaveworks sock-shop (8 services), or Lina-authored stack mirroring actual CIRES production shape. Worth asking the supervisor which is closest before scaffolding. Helm-chart-mirror pattern from rental tenant (monitoring-project@423b9ca) is the precedent.
+
+Source: monitoring-docs/solution-brief.html §12.4 SF-13 + §12.5 canonical scenario. Prerequisite for SF-9 / SF-10 / SF-11. Story Points (bulk-edit post-import): 8.",300,Lina Laaraich,Lina Laaraich,17/Jun/26
+304,S5-MSB-02: k8s / Rancher 6th MCP data source (SF-9),Story,To Do,High,Test-Bed,"New k8s_mcp server in monitoring-mcp-servers exposing pod metadata, deployment events, namespace ownership, container restarts, recent rollout history. Mirrors the existing 5 MCPs (Prometheus / Loki / Jaeger / Drain3 / RCA-history) but proxies to the k3s API + Rancher API. Unblocks SF-10 + SF-11.
+
+Source: monitoring-docs/solution-brief.html §12.4 SF-9 + §13.5 Rancher MCP. Depends on SF-13 (need real services to query against). Story Points (bulk-edit post-import): 8.",300,Lina Laaraich,Lina Laaraich,17/Jun/26
+305,S5-MSB-03: App-layer monitoring expansion (SF-10),Story,To Do,Medium,Test-Bed,"Drain3 is the only thing catching code-level / config-level issues today. Add APM-style instrumentation at the application layer (not just OTel JVM auto-instrumentation): framework-level error patterns, slow-query detection, exception-class frequency. Pairs with the existing P-list items P3 + P4.
+
+Source: monitoring-docs/solution-brief.html §12.4 SF-10. Depends on SF-13. Story Points (bulk-edit post-import): 8.",300,Lina Laaraich,Lina Laaraich,17/Jun/26
+306,S5-MSB-04: Deploy-time bug detection -- dev-deletes-a-letter scenario (SF-11),Story,To Do,High,Test-Bed,"The canonical end-to-end test case from §12.5. Pieces: deploy-event correlation (depends on SF-9 k8s data source) + Drain3 post-deploy template diff (already on the original P-list as P-4) + RCA flow that explicitly names the recent deploy as the trigger when a new failure mode appears within N minutes of a rollout.
+
+Acceptance: dev pushes a CI/CD config with a typo in a DB name -> app fails at startup -> operator gets 'new deploy <sha> introduced a config referencing nonexistent DB <typo>; affected service: <svc>; deploy time: <ts>'. Pieces work together as an integration test for the whole architecture.
+
+Source: monitoring-docs/solution-brief.html §12.5 + §12.4 SF-11. Depends on SF-13 + SF-9 + SF-10. Story Points (bulk-edit post-import): 5.",300,Lina Laaraich,Lina Laaraich,17/Jun/26
+307,S5-INC-01: Incident entity table + backfill (Phase 2.2),Story,To Do,High,Correlation-Retrieval,"Schema migration: new incidents(id, fingerprint, first_seen, last_seen, fire_count, current_verdict, current_severity) table + foreign key from rca_history.incident_id. Backfill existing rows by grouping rca_history on fingerprint. Replaces the SF-4 dashboard-side aggregation (id 212) with a proper schema-backed incident model that powers Phase 3.B Incidents sidebar route + DA-3 cross-row coherence properly.
+
+Source: monitoring-docs/solution-brief.html §13.3 Phase 2.2. Sprint 4 SF-4 was the dashboard-only Phase 1 of this; this is the durable Phase 2. Story Points (bulk-edit post-import): 8.",301,Lina Laaraich,Lina Laaraich,17/Jun/26
+308,S5-INC-02: Incidents sidebar route /dashboard/v2/incidents (Phase 3.B),Story,To Do,Medium,Correlation-Retrieval,"The 'Incidents' sidebar item now opens a real page (currently routes nowhere). Builds on the incident entity table from S5-INC-01. Query: SELECT * FROM incidents WHERE current_verdict != 'DISMISSED' ORDER BY last_seen DESC. Same row shape as triage feed, but grouped one-per-fingerprint, with fire-count + duration prominent.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.B. Depends on S5-INC-01. Story Points (bulk-edit post-import): 3.",301,Lina Laaraich,Lina Laaraich,17/Jun/26
+309,S5-INC-03: Stats sidebar route /dashboard/v2/stats (Phase 3.A.Stats),Story,To Do,Medium,Correlation-Retrieval,"The 'Stats' sidebar item opens a real page. Aggregates over rca_history: top-10 noisiest alerts, top-5 most-escalated services, verdict mix per alert family, false-positive rate (driven by operator overrides once SF-7 ships). Returns JSON for the design's chart components. No new schema — pure read aggregation.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.A.Stats. Pairs with Phase 3.A.KPI (Sprint 4 id 215). Story Points (bulk-edit post-import): 5.",301,Lina Laaraich,Lina Laaraich,17/Jun/26
+310,S5-INC-04: Anomalies sidebar route /dashboard/v2/anomalies (Phase 3.A.Anomalies),Story,To Do,Medium,Correlation-Retrieval,"The 'Anomalies' sidebar item opens a real page surfacing the four detective signals already in the platform: Drain3 novel templates from the last N hours, entity-baseline σ-claims from entity_baselines.py, recurrence-gate fires from recurrence_gate.py, adaptive-threshold widened-but-not-fired ratio. Aggregates four existing signals into one sidebar surface. This is the §C predictive-roadmap item #26 from the 2026-05-20 EOD handoff.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.A.Anomalies. Signals already exist in code; this is mostly UI + aggregation. Story Points (bulk-edit post-import): 3.",301,Lina Laaraich,Lina Laaraich,17/Jun/26
+311,S5-CFG-01: Alerts-config surface -- per-operator subscriptions (Phase 3.C.Alerts),Story,To Do,High,Operator-Config,"GET/POST /api/alerts/subscriptions. New table alert_subscriptions(user, alert_pattern, channel, paused_until, mute_reason). Operator can mark 'stop emailing me for MediumCpuUsage on k3s-node' — feeds back into the email gate at pipeline.py:764. Composes naturally with the DA-1 shelved-in-disguise gate; same enforcement point. The 'Alerts' sidebar item now opens a real page.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.C.Alerts. Story Points (bulk-edit post-import): 8.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+312,S5-CFG-02: Drain3 engine control surface (Phase 3.C.Drain3),Story,To Do,Medium,Operator-Config,"GET/POST /api/drain3/config. Tunable knobs: drain3_alert_rate_threshold, drain3_alert_min_lines, drain3_alert_cooldown_seconds (all in app/config.py today). Plus template approval/rejection — mark a learned template as 'expected, don't fire' or 'always fire when this matches.' Persist to a drain3_template_overrides table. The 'Drain3 engine' sidebar item now opens a real page.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.C.Drain3. Story Points (bulk-edit post-import): 5.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+313,S5-CFG-03: Integrations management (Phase 3.C.Integrations),Story,To Do,Medium,Operator-Config,"GET/POST /api/integrations. Manages: SMTP credentials, Grafana API key, Slack webhook URL, future PagerDuty/OpsGenie. Today all of these live in environment variables; this surface moves them to a managed config table with rotation history. The 'Integrations' sidebar item now opens a real page.
+
+Source: monitoring-docs/solution-brief.html §13.4 Phase 3.C.Integrations. Secret handling: see SECRETS.md before implementing. Story Points (bulk-edit post-import): 5.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+314,S5-OPS-01: Server-Sent Events / real-time dashboard updates (Phase 4),Story,To Do,Medium,Operator-Config,"Currently the v2 dashboard polls /decisions every 30s via auto-refresh. New endpoint GET /api/decisions/stream using Server-Sent Events; design's auto-refresh becomes push-driven. Operator sees new alerts appear without refresh.
+
+Source: monitoring-docs/solution-brief.html §13.5 Phase 4. Story Points (bulk-edit post-import): 5.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+315,S5-OPS-02: Server-side filter + sort + pagination on /decisions (Phase 4),Story,To Do,Medium,Operator-Config,"The v2 dashboard's column dropdowns currently filter client-side. For larger row counts this needs proper query-param filtering. Adds parameters ?env=&namespace=&service_type=&verdict=&page=&size= to /decisions. Note: ?page=&size= are already wired for v2; this story extends to the per-column filter dimensions.
+
+Source: monitoring-docs/solution-brief.html §13.5 Phase 4. Story Points (bulk-edit post-import): 3.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+316,S5-OPS-03: Operator identity -- Tailscale-bound sessions (Phase 4),Story,To Do,Medium,Operator-Config,"Feedback rows currently have no rater field tied to a real user. Add session cookies + a tiny users table for the Tailscale-authenticated operators. Lets the rate.html page submit 'rater' as a real identity instead of placeholder 'operator' string.
+
+Source: monitoring-docs/solution-brief.html §13.5 Phase 4. Story Points (bulk-edit post-import): 5.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+317,S5-OPS-04: Pre-compile React -- drop Babel-in-browser (Phase 4 polish),Story,To Do,Lowest,Operator-Config,"The v2 dashboard's first paint is ~3 s due to Babel parsing 6 jsx files at runtime. Esbuild pre-compile saves ~2.5 s. Polish item; defer behind operator-facing features unless first-paint complaints emerge.
+
+Source: monitoring-docs/solution-brief.html §13.5 Phase 4. Story Points (bulk-edit post-import): 5.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+318,S5-OPS-05: Platform KPI Grafana dashboard (SF-12),Story,To Do,Medium,Operator-Config,"Separate from the in-app Phase 3.A.KPI page (Sprint 4 id 215). This is a Grafana dashboard for platform-internal health: emails-per-day, false-positive rate (driven by override feedback once SF-7 ships), MTTR-after-page, archetype coverage %, GPU utilization, Lambda autoshutoff hits, RCA quality grade distribution. Most numbers come from /metrics + feedback table; pairs with the EPIC12 capacity-runway candidate (#27 in sprint-history).
+
+Source: monitoring-docs/solution-brief.html §12.4 SF-12 + §13.4 KPI. Story Points (bulk-edit post-import): 3.",302,Lina Laaraich,Lina Laaraich,17/Jun/26
+319,S5-OPS-06: Pod-level attribution drill-down on host-saturation alerts (DA-6),Story,To Do,Medium,Correlation-Retrieval,"When the LLM produces a host-CPU or host-memory RCA, it should automatically follow up with a bounded-agency MCP query to identify the dominant consumer pod. Current behavior: names the host saturation, says 'investigate via Grafana.' Better: names the host AND the top-N consumers by name (e.g. 'k3s-node CPU 99.7%, consumer batch-cruncher 3.8 cores').
+
+Surfaced by the 2026-05-21 stress3 audit (production-shape pod names) — the LLM correctly identified host saturation but didn't drill down to the consumer pod. Mechanical fix in app/bounded_agency.py.
+
+Source: monitoring-docs/solution-brief.html §13.4 + stress3 audit findings. Story Points (bulk-edit post-import): 3.",301,Lina Laaraich,Lina Laaraich,17/Jun/26
